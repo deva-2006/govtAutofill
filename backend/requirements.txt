@@ -1,0 +1,8 @@
+fastapi
+uvicorn
+easyocr
+opencv-python
+numpy
+requests
+python-multipart
+pypdfium2

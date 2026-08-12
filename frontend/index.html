@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NVSP - Official Form 6 Portal (Mock)</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <div class="app-container">
+    <header class="gov-header">
+      <div class="logo-box">
+        <span class="emblem">🏛️</span>
+        <div>
+          <h1>ELECTION COMMISSION OF INDIA</h1>
+          <p>National Voters' Service Portal — Form 6 (Application for New Voter)</p>
+        </div>
+      </div>
+      <span class="badge">ECI-FORM6-v2026</span>
+    </header>
+
+    <!-- Upload & AI Extraction Section -->
+    <section class="card upload-card">
+      <div class="card-header">
+        <h2>1. Upload Supporting Document(s)</h2>
+        <span class="step-indicator">Step 1 of 2</span>
+      </div>
+      
+      <div class="upload-dropzone">
+        <input type="file" id="documentInput" accept="image/*,.pdf" multiple class="file-input">
+        <div class="dropzone-content">
+          <span class="upload-icon">📁</span>
+          <p><strong>Upload Document Images / PDFs (Select one or multiple files)</strong></p>
+          <p class="subtitle">Drag & drop or click to add Aadhaar Front, Back, PAN Card, Passport, etc.</p>
+        </div>
+      </div>
+
+      <div id="fileListContainer" class="file-list-container"></div>
+
+      <div class="action-bar">
+        <button type="button" class="btn btn-primary" onclick="processDocument()">
+          <span>⚡ Process Documents & Auto-Fill</span>
+        </button>
+        <span id="status" class="status-msg"></span>
+      </div>
+    </section>
+
+    <!-- Expanded Voter Application Form -->
+    <form id="voterForm" onsubmit="event.preventDefault(); alert('Form 6 Application Submitted Successfully!');">
+ <!-- Section 2A: Personal Information & Passport Photo -->
+<section class="card form-card">
+  <div class="card-header">
+    <h2>2A. Personal Particulars & Applicant Photo</h2>
+  </div>
+
+  <div class="form-layout">
+    <!-- Photo Upload & Auto-Crop Preview Sidebar -->
+    <div class="photo-sidebar">
+      <div class="photo-box">
+        <img id="photo_preview" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='140' viewBox='0 0 120 140'><rect width='100%' height='100%' fill='%23edf2f7'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='%23a0aec0' font-family='sans-serif' font-size='11'>Passport Photo</text></svg>" alt="Applicant Photo">
+      </div>
+      <p class="photo-label">Auto-Cropped from ID</p>
+      
+      <!-- Direct Passport Photo Upload Option -->
+      <label for="passportPhotoInput" class="btn btn-primary" style="font-size: 11px; padding: 6px 10px; margin-top: 6px; cursor: pointer;">
+        📷 Upload Passport Photo
+      </label>
+      <input type="file" id="passportPhotoInput" accept="image/*" style="display: none;" onchange="previewManualPhoto(this)">
+    </div>
+
+    <!-- Fields Grid -->
+    <div class="fields-grid">
+      <div class="form-group full-width">
+        <label for="applicant_fullname">Full Name of Applicant</label>
+        <input type="text" id="applicant_fullname" name="applicant_fullname" placeholder="First Name Middle Name Surname" required>
+      </div>
+
+      <div class="form-group">
+        <label for="date_of_birth">Date of Birth</label>
+        <input type="date" id="date_of_birth" name="date_of_birth" required>
+      </div>
+
+      <div class="form-group">
+        <label for="gender">Gender</label>
+        <select id="gender" name="gender" required>
+          <option value="">Select Gender</option>
+          <option value="Male">Male</option>
+          <option value="Female">Female</option>
+          <option value="Third Gender">Third Gender</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="mobile_number">Mobile Number</label>
+        <input type="tel" id="mobile_number" name="mobile_number" placeholder="10-digit Mobile No">
+      </div>
+
+      <div class="form-group">
+        <label for="email_id">Email Address</label>
+        <input type="email" id="email_id" name="email_id" placeholder="applicant@email.com">
+      </div>
+
+      <div class="form-group full-width">
+        <label for="doc_identity_number">Extracted Document / Reference Number</label>
+        <input type="text" id="doc_identity_number" name="doc_identity_number" placeholder="PAN / Passport / License / Aadhaar No.">
+      </div>
+    </div>
+  </div>
+</section>
+      <!-- Section 2B: Family / Relative Details -->
+      <section class="card form-card" style="margin-top: 20px;">
+        <div class="card-header">
+          <h2>2B. Details of Relative</h2>
+        </div>
+        <div class="fields-grid">
+          <div class="form-group">
+            <label for="relation_type">Type of Relation</label>
+            <select id="relation_type" name="relation_type">
+              <option value="Father">Father</option>
+              <option value="Mother">Mother</option>
+              <option value="Husband">Husband</option>
+              <option value="Legal Guardian">Legal Guardian</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="relative_name">Name of Relative</label>
+            <input type="text" id="relative_name" name="relative_name" placeholder="Relative's Full Name">
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 2C: Address Details -->
+      <section class="card form-card" style="margin-top: 20px;">
+        <div class="card-header">
+          <h2>2C. Present Ordinary Residence Details</h2>
+        </div>
+        <div class="fields-grid">
+          <div class="form-group">
+            <label for="house_no">House / Door / Apartment No.</label>
+            <input type="text" id="house_no" name="house_no" placeholder="e.g. Flat 302, Bldg A">
+          </div>
+
+          <div class="form-group">
+            <label for="street_address">Street / Road / Lane / Locality</label>
+            <input type="text" id="street_address" name="street_address" placeholder="e.g. Gandhi Road">
+          </div>
+
+          <div class="form-group">
+            <label for="village_town">Village / Town / City</label>
+            <input type="text" id="village_town" name="village_town" placeholder="City or Village Name">
+          </div>
+
+          <div class="form-group">
+            <label for="post_office">Post Office</label>
+            <input type="text" id="post_office" name="post_office" placeholder="Post Office Branch">
+          </div>
+
+          <div class="form-group">
+            <label for="pincode">PIN Code</label>
+            <input type="text" id="pincode" name="pincode" placeholder="6-digit PIN Code">
+          </div>
+
+          <div class="form-group">
+            <label for="district">District</label>
+            <input type="text" id="district" name="district" placeholder="District Name">
+          </div>
+
+          <div class="form-group">
+            <label for="state">State / Union Territory</label>
+            <input type="text" id="state" name="state" placeholder="State Name">
+          </div>
+
+          <div class="form-group">
+            <label for="constituency">Assembly Constituency No. / Name</label>
+            <input type="text" id="constituency" name="constituency" placeholder="e.g. 014 - Central">
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 2D: Birth & Declaration Details -->
+      <section class="card form-card" style="margin-top: 20px;">
+        <div class="card-header">
+          <h2>2D. Town / Place of Birth & Declaration</h2>
+        </div>
+        <div class="fields-grid">
+          <div class="form-group">
+            <label for="birth_town">Town / Village of Birth</label>
+            <input type="text" id="birth_town" name="birth_town" placeholder="Town of Birth">
+          </div>
+          <div class="form-group">
+            <label for="birth_state">State of Birth</label>
+            <input type="text" id="birth_state" name="birth_state" placeholder="State of Birth">
+          </div>
+          <div class="form-group">
+            <label for="declaration_place">Place of Declaration</label>
+            <input type="text" id="declaration_place" name="declaration_place" placeholder="Current Location / City">
+          </div>
+          <div class="form-group">
+            <label for="declaration_date">Date of Application</label>
+            <input type="date" id="declaration_date" name="declaration_date">
+          </div>
+        </div>
+      </section>
+
+      <div class="form-actions" style="margin-top: 20px;">
+        <button type="submit" class="btn btn-success" style="padding: 14px; font-size: 16px;">
+          Submit Form 6 Official Application
+        </button>
+      </div>
+
+    </form>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
