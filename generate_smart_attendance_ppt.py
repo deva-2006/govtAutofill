@@ -170,7 +170,7 @@ def create_smart_attendance_presentation():
         p.font.color.rgb = TEXT_DARK
         p.space_after = Pt(3)
 
-    # Right Card: Project Member
+    # Right Card: Project Members
     c_mem = s1.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(6.8), Inches(3.8), Inches(5.733), Inches(2.8))
     c_mem.fill.solid()
     c_mem.fill.fore_color.rgb = CARD_BLUE_BG
@@ -182,35 +182,33 @@ def create_smart_attendance_presentation():
     mtf.word_wrap = True
     
     mp1 = mtf.paragraphs[0]
-    mp1.text = "👤  PROJECT SUBMITTED BY"
+    mp1.text = "👥  PROJECT MEMBERS"
     mp1.font.size = Pt(13)
     mp1.font.bold = True
     mp1.font.color.rgb = BLUE_PILL_TXT
-    mp1.space_after = Pt(12)
+    mp1.space_after = Pt(8)
 
-    mp2 = mtf.add_paragraph()
-    mp2.text = "DHANUSH M N"
-    mp2.font.size = Pt(20)
-    mp2.font.bold = True
-    mp2.font.color.rgb = NAVY_DARK
-    mp2.space_after = Pt(4)
+    members_list = [
+        ("DHANUSH M N", "2117230070028"),
+        ("ASHWATHRAJ", "2117230070017")
+    ]
+    for name, regno in members_list:
+        p = mtf.add_paragraph()
+        p.text = f"{name}   ({regno})"
+        p.font.size = Pt(14)
+        p.font.bold = True
+        p.font.color.rgb = NAVY_DARK
+        p.space_after = Pt(6)
 
-    mp3 = mtf.add_paragraph()
-    mp3.text = "Register Number: 2117230070028"
-    mp3.font.size = Pt(14)
-    mp3.font.bold = True
-    mp3.font.color.rgb = TOP_BLUE
-    mp3.space_after = Pt(10)
-
-    mp4 = mtf.add_paragraph()
-    mp4.text = "B.Tech Artificial Intelligence and Data Science\nFirst Project Review Presentation"
-    mp4.font.size = Pt(11.5)
-    mp4.font.color.rgb = TEXT_DARK
+    p_sub = mtf.add_paragraph()
+    p_sub.text = "B.Tech Artificial Intelligence and Data Science\nFirst Project Review Presentation"
+    p_sub.font.size = Pt(11)
+    p_sub.font.color.rgb = TEXT_DARK
 
     s1.notes_slide.notes_text_frame.text = (
         "SIMPLE EXPLANATION FOR STAFF:\n"
-        "'Good morning respected staff and panel members. I am Dhanush M N, Register Number 2117230070028, "
-        "from the Department of Artificial Intelligence and Data Science. Today, I am presenting my First Project Review on "
+        "'Good morning respected staff and panel members. We are Dhanush M N and Ashwathraj, "
+        "from the Department of Artificial Intelligence and Data Science. Today, we are presenting our First Project Review on "
         "'SMART ATTENDANCE MONITORING SYSTEM'. This project automates daily classroom and office attendance using "
         "AI face recognition, eliminating manual roll calls, saving classroom time, and completely preventing proxy attendance.'"
     )
