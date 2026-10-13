@@ -129,7 +129,7 @@ def create_smart_attendance_presentation():
     t_tf.word_wrap = True
     
     tp1 = t_tf.paragraphs[0]
-    tp1.text = "SMART ATTENDANCE MONITORING SYSTEM"
+    tp1.text = "STUDENT ATTENDANCE MONITORING SYSTEM"
     tp1.font.size = Pt(28)
     tp1.font.bold = True
     tp1.font.color.rgb = NAVY_DARK
@@ -786,14 +786,14 @@ def create_smart_attendance_presentation():
 
     s16.notes_slide.notes_text_frame.text = (
         "SIMPLE EXPLANATION FOR STAFF:\n"
-        "'In conclusion: The Smart Attendance Monitoring System saves time, stops proxy attendance, and automates daily reporting "
-        "using deep learning face recognition. I have already built and verified the working prototype for Phase 1. "
-        "Thank you respected staff and panel members, I am ready for your questions and guidance!'"
+        "'In conclusion: The Student Attendance Monitoring System saves time, stops proxy attendance, and automates daily reporting "
+        "using deep learning face recognition. We have already built and verified the working prototype for Phase 1. "
+        "Thank you respected staff and panel members, we are ready for your questions and guidance!'"
     )
 
-    output_filename = "SMART_ATTENDANCE_MONITORING.pptx"
-    prs.save(output_filename)
-    print(f"Presentation successfully created: {os.path.abspath(output_filename)}")
+    prs.save("SMART_ATTENDANCE_MONITORING.pptx")
+    prs.save("STUDENTS_ATTENDANCE_MONITORING_SYSTEM.pptx")
+    print("Presentations successfully created: SMART_ATTENDANCE_MONITORING.pptx & STUDENTS_ATTENDANCE_MONITORING_SYSTEM.pptx")
 
 if __name__ == "__main__":
     create_smart_attendance_presentation()

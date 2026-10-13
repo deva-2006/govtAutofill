@@ -169,7 +169,7 @@ def build_pdf(filename="Smart_Attendance_Monitoring_Base_Paper_Review.pdf"):
 
     # ================= PAGE 1: TITLE PAGE =================
     story.append(Spacer(1, 60))
-    story.append(Paragraph("SMART ATTENDANCE MONITORING SYSTEM", style_cover_title))
+    story.append(Paragraph("STUDENTS ATTENDANCE MONITORING SYSTEM", style_cover_title))
     story.append(Spacer(1, 30))
     story.append(Paragraph("PROJECT REVIEW – BASE PAPER / PROPOSED SYSTEM", style_cover_sub))
     story.append(Spacer(1, 45))
@@ -554,7 +554,7 @@ def build_docx(filename="Smart_Attendance_Monitoring_Base_Paper_Review.docx"):
 
     p_title = doc.add_paragraph()
     p_title.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    r_title = p_title.add_run("SMART ATTENDANCE MONITORING SYSTEM")
+    r_title = p_title.add_run("STUDENTS ATTENDANCE MONITORING SYSTEM")
     format_run(r_title, size_pt=15, bold=True)
     p_title.paragraph_format.space_after = DocxPt(35)
 
@@ -938,5 +938,7 @@ def build_docx(filename="Smart_Attendance_Monitoring_Base_Paper_Review.docx"):
 
 
 if __name__ == "__main__":
+    build_pdf("Students_Attendance_Monitoring_System_Base_Paper_Review.pdf")
+    build_docx("Students_Attendance_Monitoring_System_Base_Paper_Review.docx")
     build_pdf("Smart_Attendance_Monitoring_Base_Paper_Review.pdf")
     build_docx("Smart_Attendance_Monitoring_Base_Paper_Review.docx")
