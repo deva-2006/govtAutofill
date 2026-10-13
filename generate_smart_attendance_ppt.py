@@ -66,6 +66,14 @@ def create_smart_attendance_presentation():
         sp.font.bold = True
         sp.font.color.rgb = TEXT_MUTED
 
+        # Bottom Footer on Every Slide
+        footer_box = slide.shapes.add_textbox(Inches(0.8), Inches(7.1), Inches(11.733), Inches(0.35))
+        ft_tf = footer_box.text_frame
+        ft_p = ft_tf.paragraphs[0]
+        ft_p.text = "Dept of AI & DS | RIT | Project Review - 1 | Team: DHANUSH MN (2117230070028), ASHWATHRAJ (2117230070017), ATHISH R (2117230070020)"
+        ft_p.font.size = Pt(9.5)
+        ft_p.font.color.rgb = TEXT_MUTED
+
     def add_slide_title(slide, title_text, subtitle_text=""):
         tb = slide.shapes.add_textbox(Inches(0.8), Inches(0.72), Inches(11.733), Inches(0.75))
         tf = tb.text_frame
@@ -129,8 +137,15 @@ def create_smart_attendance_presentation():
 
     tp2 = t_tf.add_paragraph()
     tp2.text = "An Automated Contactless Face Recognition Attendance Engine using Deep Learning, Real-Time Video Analytics, and Cloud Database Integration"
-    tp2.font.size = Pt(14.5)
+    tp2.font.size = Pt(13.5)
     tp2.font.color.rgb = TEXT_MUTED
+    tp2.space_after = Pt(4)
+
+    tp3 = t_tf.add_paragraph()
+    tp3.text = "Presented by: DHANUSH MN (2117230070028)  •  ASHWATHRAJ (2117230070017)  •  ATHISH R (2117230070020)"
+    tp3.font.size = Pt(12)
+    tp3.font.bold = True
+    tp3.font.color.rgb = TOP_BLUE
 
     # Left Card: Project Details
     c_proj = s1.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(0.8), Inches(3.8), Inches(5.6), Inches(2.8))
@@ -189,25 +204,26 @@ def create_smart_attendance_presentation():
     mp1.space_after = Pt(8)
 
     members_list = [
-        ("DHANUSH M N", "2117230070028"),
-        ("ASHWATHRAJ", "2117230070017")
+        ("DHANUSH MN", "2117230070028"),
+        ("ASHWATHRAJ", "2117230070017"),
+        ("ATHISH R", "2117230070020")
     ]
     for name, regno in members_list:
         p = mtf.add_paragraph()
         p.text = f"{name}   ({regno})"
-        p.font.size = Pt(14)
+        p.font.size = Pt(13)
         p.font.bold = True
         p.font.color.rgb = NAVY_DARK
-        p.space_after = Pt(6)
+        p.space_after = Pt(4)
 
     p_sub = mtf.add_paragraph()
-    p_sub.text = "B.Tech Artificial Intelligence and Data Science\nFirst Project Review Presentation"
-    p_sub.font.size = Pt(11)
-    p_sub.font.color.rgb = TEXT_DARK
+    p_sub.text = "B.Tech Artificial Intelligence & Data Science | First Review"
+    p_sub.font.size = Pt(10.5)
+    p_sub.font.color.rgb = TEXT_MUTED
 
     s1.notes_slide.notes_text_frame.text = (
         "SIMPLE EXPLANATION FOR STAFF:\n"
-        "'Good morning respected staff and panel members. We are Dhanush M N and Ashwathraj, "
+        "'Good morning respected staff and panel members. We are Dhanush M N, Ashwathraj, and Athish R, "
         "from the Department of Artificial Intelligence and Data Science. Today, we are presenting our First Project Review on "
         "'SMART ATTENDANCE MONITORING SYSTEM'. This project automates daily classroom and office attendance using "
         "AI face recognition, eliminating manual roll calls, saving classroom time, and completely preventing proxy attendance.'"
