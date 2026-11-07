@@ -4,10 +4,10 @@ import pymupdf
 import numpy as np
 from PIL import Image
 
-def pdf_to_images(pdf_path_or_bytes: Union[str, Path, bytes], dpi: int = 95, max_pages: int = 1) -> list[np.ndarray]:
+def pdf_to_images(pdf_path_or_bytes: Union[str, Path, bytes], dpi: int = 110, max_pages: int = 2) -> list[np.ndarray]:
     """
-    Renders relevant first page(s) of a PDF to OpenCV/numpy RGB images at optimized DPI (95) for high-speed OCR.
-    Restricting to max_pages=1 avoids processing terms/disclaimers on back pages and speeds up execution by 2x.
+    Renders relevant first page(s) of a PDF to OpenCV/numpy RGB images at optimized DPI (110) for high-speed OCR.
+    Processes front and back pages (up to max_pages=2) to capture demographic details and household roster.
     """
     if isinstance(pdf_path_or_bytes, (str, Path)):
         doc = pymupdf.open(str(pdf_path_or_bytes))

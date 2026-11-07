@@ -670,3 +670,68 @@ select.form-control {
   border-top: 1px solid var(--neutral-200);
   background: white;
 }
+
+/* Stage Failure & Scrutiny Explanations */
+.stage-alert {
+  margin-top: 0.75rem;
+  padding: 0.85rem 1rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+.alert-failed {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+}
+
+.alert-review {
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  color: #92400e;
+}
+
+.alert-failed strong, .alert-review strong {
+  display: block;
+  font-size: 0.88rem;
+  margin-bottom: 0.35rem;
+}
+
+.remedy-hint {
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px dashed rgba(0, 0, 0, 0.12);
+  font-size: 0.82rem;
+}
+
+/* Live Segment Progress Pulsing */
+.stage-item.status-processing {
+  border-left: 4px solid var(--accent);
+  background: #f0f7ff;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+  animation: pulse-segment 2s infinite ease-in-out;
+}
+
+@keyframes pulse-segment {
+  0%, 100% { border-color: var(--accent); }
+  50% { border-color: #60a5fa; }
+}
+
+.segment-ticker {
+  background: #1e293b;
+  color: #38bdf8;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-sm);
+  font-family: monospace;
+  font-size: 0.88rem;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  margin-bottom: 1.25rem;
+  box-shadow: inset 0 1px 3px rgba(0,0,0,0.3);
+}
+
+.segment-ticker .ticker-icon {
+  animation: spin 1s linear infinite;
+}

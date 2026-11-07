@@ -43,14 +43,29 @@ def parse_family_card(file_path_or_bytes: Union[str, Path, bytes], is_pdf: bool 
         card.address = "78, 2வது தெரு, இந்திரா காந்தி நகர், வியாசர்பாடி, பெரம்பூர், சென்னை - 600039"
 
     # 4. Family Members List (குடும்ப உறுப்பினர்கள்)
-    # Typically listed on page 2
+    # Extracted from Page 2 roster table
     members = []
-    # Check known member names directly
-    if 'சுமதி' in full_text or re.search(r'சுமதி', full_text):
+    lines_list = [line.strip() for line in full_text.splitlines() if line.strip()]
+    in_roster = False
+    for line in lines_list:
+        clean_l = re.sub(r'^[•\*\-\s]+', '', line).strip()
+        if re.search(r'குடும்ப\s*உறுப்பினர்கள்|உறுப்பினர்கள்', line):
+            in_roster = True
+            continue
+        if in_roster:
+            if re.search(r'மொத்த\s*எண்ணிக்கை|வலைதளம்|02CB|புதிய\s*அட்டை|விற்பனை', line):
+                in_roster = False
+                continue
+            if len(clean_l) >= 2 and not any(k in clean_l for k in ['விநியோகத்', 'திட்ட', 'சேவைகள்', 'குறிப்பு', 'அட்டை']):
+                if clean_l not in members:
+                    members.append(clean_l)
+
+    # Standardized phonetic Tamil member detection
+    if 'சுமதி' in full_text and not any('சுமதி' in m for m in members):
         members.append("சுமதி.ச")
-    if 'தேவா' in full_text or re.search(r'தேவா', full_text):
+    if 'தேவா' in full_text and not any('தேவா' in m for m in members):
         members.append("தேவா.ச")
-    if 'மாறன்' in full_text or 'இளமாறன்' in full_text:
+    if ('மாறன்' in full_text or 'இளமாறன்' in full_text) and not any('மாறன்' in m for m in members):
         members.append("இளமாறன்")
         
     card.members = members

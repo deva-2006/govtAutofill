@@ -140,7 +140,7 @@ def perform_cross_document_matching(
         doc2_value=matched_fc_member or ", ".join(family.members),
         match_score=best_fc_score,
         status=StageStatus.VERIFIED if child_in_family else StageStatus.MANUAL_REVIEW,
-        remarks="Child listed as official family member on ration card." if child_in_family else "Child not explicitly recognized in ration card member table."
+        remarks=f"Child confirmed as official family member on ration card ('{matched_fc_member}')." if child_in_family else f"Child name '{applicant.child_name}' not identified in family card member roster: {family.members}."
     ))
 
     # 4. Child DOB: Birth Cert vs Aadhaar
@@ -153,7 +153,7 @@ def perform_cross_document_matching(
         doc2_value=aadhaar.dob,
         match_score=sc,
         status=StageStatus.VERIFIED if ok else StageStatus.MANUAL_REVIEW,
-        remarks="Date of birth verified across birth record and national identity." if ok else "DOB discrepancy between records."
+        remarks=f"Date of birth ({aadhaar.dob}) verified across municipal birth record and national identity." if ok else f"DOB discrepancy: Birth Certificate has '{birth.dob or applicant.child_dob}' while Aadhaar has '{aadhaar.dob}'."
     ))
 
     # 5. Father Name: Birth Cert vs Aadhaar (S/O)
@@ -166,7 +166,7 @@ def perform_cross_document_matching(
         doc2_value=aadhaar.father_or_guardian or family.head_name,
         match_score=sc,
         status=StageStatus.VERIFIED if ok else StageStatus.MANUAL_REVIEW,
-        remarks="Paternity confirmed via Aadhaar Care-of (S/O) & ration card head." if ok else "Father name requires manual reconciliation."
+        remarks=f"Paternity confirmed via Aadhaar Care-of (S/O) & ration card head ('{aadhaar.father_or_guardian or family.head_name}')." if ok else f"Father name '{applicant.father_name}' requires manual reconciliation with '{aadhaar.father_or_guardian or family.head_name}'."
     ))
 
     # 6. Mother Name in Family Card
@@ -190,7 +190,7 @@ def perform_cross_document_matching(
         doc2_value=matched_m_member or ", ".join(family.members),
         match_score=best_m_score,
         status=StageStatus.VERIFIED if mother_in_family else StageStatus.MANUAL_REVIEW,
-        remarks="Mother confirmed as family member on ration card." if mother_in_family else "Mother name match pending officer review."
+        remarks=f"Mother confirmed as registered family member on ration card ('{matched_m_member}')." if mother_in_family else f"Mother name '{applicant.mother_name}' not matched in family card member roster: {family.members}."
     ))
 
     # 7. Residential Address: Aadhaar vs Family Card

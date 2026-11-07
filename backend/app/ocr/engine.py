@@ -69,7 +69,7 @@ class OCREngine:
             return str(p)
         return hashlib.md5(file_path_or_bytes).hexdigest()
 
-    def extract_text_from_file(self, file_path_or_bytes: Union[str, Path, bytes], is_pdf: bool = False) -> List[Tuple[str, float]]:
+    def extract_text_from_file(self, file_path_or_bytes: Union[str, Path, bytes], is_pdf: bool = False, max_pages: int = 2) -> List[Tuple[str, float]]:
         """
         Processes image or PDF file and returns list of (detected_text, confidence).
         Caches results for high performance.
@@ -94,7 +94,7 @@ class OCREngine:
                 results = [(line.strip(), 1.0) for line in embedded_text.splitlines() if line.strip()]
                 self._cache[cache_key] = results
                 return results
-            images = pdf_to_images(target_src, dpi=95, max_pages=1)
+            images = pdf_to_images(target_src, dpi=110, max_pages=max_pages)
         elif target_path:
             # Use np.fromfile to avoid Windows path / Unicode encoding issues
             if target_path.exists():

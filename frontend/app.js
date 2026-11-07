@@ -268,6 +268,7 @@ function updateStageUI(stageId, status, message, flags = []) {
   const item = document.getElementById(`ui_${stageId}`);
   const badge = document.getElementById(`badge_${stageId}`);
   const msg = document.getElementById(`msg_${stageId}`);
+  const detail = document.getElementById(`detail_${stageId}`);
   const flagsList = document.getElementById(`flags_${stageId}`);
 
   if (!item || !badge) return;
@@ -289,11 +290,43 @@ function updateStageUI(stageId, status, message, flags = []) {
   badge.innerHTML = badgeHtml;
 
   if (message && msg) msg.innerText = message;
-  if (flagsList && flags.length > 0) {
-    flagsList.innerHTML = flags.map(f => {
-      const isWarn = status === "MANUAL_REVIEW";
-      return `<li class="flag-item ${isWarn ? 'flag-warning' : 'flag-danger'}"><span>${isWarn ? '⚠️' : '❌'}</span><span>${f}</span></li>`;
-    }).join("");
+
+  // Render descriptive explanation callouts if failed or pending officer review
+  if (detail) {
+    let alertHtml = "";
+    if (status === "FAILED") {
+      alertHtml = `
+        <div class="stage-alert alert-failed">
+          <strong>❌ Verification Discrepancy / Failure Detected:</strong>
+          <div>${flags && flags.length > 0 ? flags.map(f => `• ${f}`).join("<br>") : message}</div>
+          <div class="remedy-hint">💡 <strong>Remedy / Required Action:</strong> Document could not be verified automatically. Please ensure the scan is clear, non-glare, and matches the entered applicant profile.</div>
+        </div>
+      `;
+      detail.style.display = "block";
+    } else if (status === "MANUAL_REVIEW") {
+      alertHtml = `
+        <div class="stage-alert alert-review">
+          <strong>⚠️ Statutory Scrutiny Note for Tahsildar / RI:</strong>
+          <div>${flags && flags.length > 0 ? flags.map(f => `• ${f}`).join("<br>") : message}</div>
+          <div class="remedy-hint">⚖️ <strong>Statutory Protocol:</strong> Under Tamil Nadu Revenue Standing Order 35, where a mother's certificate is submitted, statutory field inquiry by Village Administrative Officer (VAO) and Revenue Inspector (RI) is required.</div>
+        </div>
+      `;
+      detail.style.display = "block";
+    }
+
+    if (flagsList) {
+      if (flags && flags.length > 0 && status === "VERIFIED") {
+        flagsList.innerHTML = flags.map(f => `<li class="flag-item flag-success"><span>✓</span><span>${f}</span></li>`).join("");
+      } else {
+        flagsList.innerHTML = "";
+      }
+    }
+
+    const existingAlert = detail.querySelector(".stage-alert");
+    if (existingAlert) existingAlert.remove();
+    if (alertHtml) {
+      detail.insertAdjacentHTML("beforeend", alertHtml);
+    }
   }
 }
 
@@ -303,6 +336,18 @@ function toggleStageDetails(stageId) {
     detail.style.display = detail.style.display === "none" ? "block" : "none";
   }
 }
+
+// 8 Segments Live Execution Steps with Short Informative Loading Text
+const PIPELINE_SEGMENT_STEPS = [
+  { id: "stage_1", num: 1, title: "Validating applicant inputs & statutory community lineage declarations...", desc: "Checking child profile, date of birth format, and parent declarations against Tamil Nadu revenue guidelines." },
+  { id: "stage_2", num: 2, title: "Parent Community Certificate OCR & G.O. caste schedule matching...", desc: "Performing OCR extraction on Parent Community Certificate; cross-referencing MBC caste schedule under G.O. Ms No. 28." },
+  { id: "stage_3", num: 3, title: "Municipal Birth Certificate OCR & DOB registry validation...", desc: "Extracting Municipal Birth Record; verifying child name, date of birth (21/02/2006), and registration authority." },
+  { id: "stage_4", num: 4, title: "Child Aadhaar identity OCR, UID masking & S/O care-of relation check...", desc: "Scanning national identity record; verifying masked UID, Care-Of (S/O Shankar) paternity link, and residential pincode." },
+  { id: "stage_5", num: 5, title: "Tamil Nadu Smart Family Card OCR & household roster parsing...", desc: "Processing Tamil Smart Family Card; extracting household members (சுமதி.ச, தேவா.ச, இளமாறன்) and address." },
+  { id: "stage_6", num: 6, title: "Cross-Document Consistency Matrix & Phonetic Transliteration...", desc: "Evaluating bilingual phonetic transliteration matrix across Application Form, Birth Cert, Aadhaar, and Family Card." },
+  { id: "stage_7", num: 7, title: "Synthesizing Statutory Audit Assessment & Risk Classification...", desc: "Computing eligibility compliance, lineage inheritance verification, and Tahsildar inquiry requirements." },
+  { id: "stage_8", num: 8, title: "Assembling Official Tahsildar Application Request PDF...", desc: "Compiling structured Tahsildar Application Request document with VAO, RI, and Tahsildar endorsement blocks." }
+];
 
 async function handleFormSubmit(event) {
   event.preventDefault();
@@ -345,20 +390,29 @@ async function handleFormSubmit(event) {
   initPipelineUI();
   document.getElementById("matrixContainer").style.display = "none";
   document.getElementById("outcomeContainer").style.display = "none";
-  document.getElementById("pipelineStatusBanner").innerHTML = `
-    <span class="spinner spinner-primary"></span> Executing 8-stage verification pipeline and cross-matching... Please wait.
-  `;
 
-  // Simulate active stage transitions for user visual feedback
-  let simulatedStage = 1;
-  updateStageUI("stage_1", "PROCESSING", "Validating applicant details and statutory rules...");
-  const simInterval = setInterval(() => {
-    simulatedStage++;
-    if (simulatedStage <= 5) {
-      updateStageUI(`stage_${simulatedStage - 1}`, "VERIFIED", "Stage completed.");
-      updateStageUI(`stage_${simulatedStage}`, "PROCESSING", `Extracting and cross-matching document ${simulatedStage}...`);
+  // Live segment-by-segment ticker showing short loading text in every segment
+  let activeSegmentIndex = 0;
+  function updateSegmentTicker() {
+    if (activeSegmentIndex < PIPELINE_SEGMENT_STEPS.length) {
+      const seg = PIPELINE_SEGMENT_STEPS[activeSegmentIndex];
+      document.getElementById("pipelineStatusBanner").innerHTML = `
+        <div class="segment-ticker">
+          <span class="ticker-icon">⚙️</span>
+          <span><strong>Stage ${seg.num}/8:</strong> ${seg.title}</span>
+        </div>
+      `;
+      if (activeSegmentIndex > 0) {
+        const prev = PIPELINE_SEGMENT_STEPS[activeSegmentIndex - 1];
+        updateStageUI(prev.id, "VERIFIED", "Stage completed successfully.");
+      }
+      updateStageUI(seg.id, "PROCESSING", seg.desc);
+      activeSegmentIndex++;
     }
-  }, 3500);
+  }
+
+  updateSegmentTicker();
+  const simInterval = setInterval(updateSegmentTicker, 2400);
 
   try {
     let response;
@@ -386,10 +440,15 @@ async function handleFormSubmit(event) {
     clearInterval(simInterval);
     console.error("Pipeline failure:", error);
     document.getElementById("pipelineStatusBanner").innerHTML = `
-      <span style="color: var(--danger);">❌ Verification Pipeline Error: ${error.message}</span>
+      <div class="stage-alert alert-failed">
+        <strong>❌ Verification Pipeline Error:</strong>
+        <div>${error.message}</div>
+        <div class="remedy-hint">💡 Ensure backend server is running and sample documents are accessible.</div>
+      </div>
     `;
     alert(`Verification Pipeline Error: ${error.message}`);
   } finally {
+    clearInterval(simInterval);
     btnSubmit.disabled = false;
     btnSubmit.innerHTML = `<span>🚀 Execute 8-Stage Verification Pipeline</span>`;
   }
@@ -399,7 +458,7 @@ function renderPipelineResults(report) {
   // Update stage statuses with official backend report
   report.stages.forEach(st => {
     updateStageUI(st.stage_id, st.status, st.message, st.flags || []);
-    if (st.flags && st.flags.length > 0) {
+    if (st.status === "FAILED" || st.status === "MANUAL_REVIEW") {
       const detail = document.getElementById(`detail_${st.stage_id}`);
       if (detail) detail.style.display = "block";
     }
@@ -411,13 +470,13 @@ function renderPipelineResults(report) {
 
   if (report.overall_status === "VERIFIED") {
     overallBadge.innerHTML = `<span class="badge badge-success">✓ Fully Verified</span>`;
-    banner.innerHTML = `✅ <strong>Pre-Verification Successful:</strong> All supporting documents and statutory community inheritance rules verified. Official application ready for Tahsildar sign-off.`;
+    banner.innerHTML = `✅ <strong>Pre-Verification Successful:</strong> All supporting documents, identity records, and statutory community inheritance rules verified. Official application request generated for Tahsildar sign-off.`;
   } else if (report.overall_status === "MANUAL_REVIEW") {
     overallBadge.innerHTML = `<span class="badge badge-warning">⚠️ Manual Review Required</span>`;
     banner.innerHTML = `⚠️ <strong>Pre-Verification Complete with Notes:</strong> Application document prepared with designated inquiry remarks for Tahsildar field scrutiny.`;
   } else {
     overallBadge.innerHTML = `<span class="badge badge-danger">✗ Verification Failed</span>`;
-    banner.innerHTML = `❌ <strong>Verification Rejected:</strong> Critical discrepancies detected in submitted supporting documents.`;
+    banner.innerHTML = `❌ <strong>Verification Rejected:</strong> Critical discrepancies detected in submitted supporting documents. Please see details below.`;
   }
 
   // Render Cross-Document Consistency Matrix
@@ -439,8 +498,8 @@ function renderPipelineResults(report) {
 
       row.innerHTML = `
         <td><strong>${m.field_name}</strong></td>
-        <td><code>${m.application_value || "—"}</code></td>
-        <td><code>${m.document_value || "—"}</code></td>
+        <td><code>${m.doc1_value || "—"}</code></td>
+        <td><code>${m.doc2_value || "—"}</code></td>
         <td><strong>${m.match_score.toFixed(1)}%</strong></td>
         <td>${statusBadge}</td>
         <td>${m.remarks || "—"}</td>
