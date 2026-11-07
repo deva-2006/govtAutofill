@@ -1,231 +1,348 @@
-// Field Alias Dictionary to map backend JSON keys to HTML input IDs/Names
-const FIELD_ALIASES = {
-  full_name: ["applicant_fullname", "fullname", "fname", "name"],
-  dob: ["date_of_birth", "dob", "birthdate"],
-  gender: ["gender", "sex"],
-  mobile: ["mobile_number", "mobile", "phone"],
-  email: ["email_id", "email"],
-  id_number: ["doc_identity_number", "id_num", "pan_no", "dl_no", "id_number"],
-  
-  // Relative details
-  relation_type: ["relation_type", "relationship"],
-  relative_name: ["relative_name", "father_name", "husband_name", "guardian_name"],
-  
-  // Address breakdown
-  house_no: ["house_no", "door_no", "flat_no"],
-  street: ["street_address", "street", "locality"],
-  city: ["village_town", "city", "town"],
-  post_office: ["post_office", "po"],
-  pincode: ["pincode", "zip", "postal_code"],
-  district: ["district"],
-  state: ["state"],
-  constituency: ["constituency", "assembly"],
-  
-  // Birth & Declaration
-  birth_town: ["birth_town", "place_of_birth"],
-  birth_state: ["birth_state"]
-};
+// Community Certificate Application Verification System - Frontend Orchestrator
 
-// Multi-document state accumulator
-let attachedFiles = [];
+let isSampleMode = false;
 
-// Helper to format bytes to KB/MB
-function formatFileSize(bytes) {
-  if (bytes === 0) return '0 B';
-  const k = 1024;
-  const sizes = ['B', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+// Preload official sample data for testing and staff demo
+async function loadSampleData() {
+  try {
+    const res = await fetch("/api/verify/sample-info");
+    if (!res.ok) throw new Error("Could not fetch sample info");
+    const data = await res.json();
+    
+    const app = data.sample_applicant;
+    document.getElementById("child_name").value = app.child_name || "";
+    document.getElementById("child_gender").value = app.child_gender || "Male";
+    document.getElementById("child_dob").value = app.child_dob || "";
+    document.getElementById("child_community").value = app.child_community || "MBC";
+    document.getElementById("child_sub_caste").value = app.child_sub_caste || "";
+    document.getElementById("father_name").value = app.father_name || "";
+    document.getElementById("father_community").value = app.father_community || "MBC";
+    document.getElementById("mother_name").value = app.mother_name || "";
+    document.getElementById("mother_community").value = app.mother_community || "MBC";
+    
+    const radioParent = document.querySelector(`input[name="parent_certificate_submitted"][value="${app.parent_certificate_submitted}"]`);
+    if (radioParent) radioParent.checked = true;
+
+    document.getElementById("door_no").value = app.door_no || "";
+    document.getElementById("street").value = app.street || "";
+    document.getElementById("village_town").value = app.village_town || "";
+    document.getElementById("taluk").value = app.taluk || "";
+    document.getElementById("district").value = app.district || "";
+    document.getElementById("pincode").value = app.pincode || "";
+
+    // Highlight sample files loaded
+    setPreviewText("preview_parent_community", "box_parent_community", "mother_community.jpeg (Sample MBC Certificate)");
+    setPreviewText("preview_birth", "box_birth", "child_birth.jpeg (Sample Municipal Record)");
+    setPreviewText("preview_aadhaar", "box_aadhaar", "child_aadhar.pdf (Sample Official e-Aadhaar)");
+    setPreviewText("preview_family", "box_family", "ration_card.pdf (Sample Tamil Family Card)");
+
+    isSampleMode = true;
+    document.getElementById("validationWarning").innerText = "Official sample documents & particulars loaded. Ready to execute pipeline.";
+    document.getElementById("validationWarning").style.color = "var(--success)";
+  } catch (err) {
+    console.error("Error loading sample data:", err);
+    alert("Could not load sample data from server. Ensure backend is running.");
+  }
 }
 
-// Render multi-document chips UI
-function renderFileListUI() {
-  const container = document.getElementById('fileListContainer');
-  const dropzoneContent = document.querySelector('.dropzone-content');
+function setPreviewText(previewId, boxId, text) {
+  const preview = document.getElementById(previewId);
+  const box = document.getElementById(boxId);
+  if (preview && box) {
+    preview.innerText = `✓ ${text}`;
+    preview.style.display = "block";
+    box.classList.add("file-ready");
+  }
+}
 
-  if (!container || !dropzoneContent) return;
+function handleFileSelect(input, previewId, boxId) {
+  isSampleMode = false;
+  const file = input.files[0];
+  if (file) {
+    const sizeKB = (file.size / 1024).toFixed(1);
+    setPreviewText(previewId, boxId, `${file.name} (${sizeKB} KB)`);
+    document.getElementById("validationWarning").innerText = "";
+  }
+}
 
-  container.innerHTML = '';
+// 8 Stages definition for visual stepper
+const STAGE_DEFINITIONS = [
+  { id: "stage_1", num: 1, name: "Application Details Validation", desc: "Validates applicant inputs, statutory lineage declarations, and required field formats." },
+  { id: "stage_2", num: 2, name: "Parent Community Certificate Verification", desc: "OCR extraction of parent certificate & Tamil Nadu statutory inheritance rule evaluation." },
+  { id: "stage_3", num: 3, name: "Child Birth Certificate Verification", desc: "OCR parsing of Municipal / Panchayat birth registry to verify name, DOB, and parentage." },
+  { id: "stage_4", num: 4, name: "Child Aadhaar Verification", desc: "Verification of national identity, S/O care-of relation, and residential locality." },
+  { id: "stage_5", num: 5, name: "Family Card Verification (Tamil)", desc: "Parsing Civil Supplies smart card in Tamil to verify household membership and family roster." },
+  { id: "stage_6", num: 6, name: "Cross-Document Information Matching", desc: "Bilingual phonetic transliteration & cross-document consistency scoring matrix." },
+  { id: "stage_7", num: 7, name: "Final Verification Assessment", desc: "Comprehensive risk audit: determines eligibility, manual inquiry requirements, or rejection." },
+  { id: "stage_8", num: 8, name: "Application PDF Generation", desc: "Compiles formal Tahsildar Application Request PDF with audit trail and official endorsement blocks." }
+];
 
-  if (attachedFiles.length === 0) {
-    dropzoneContent.innerHTML = `
-      <span class="upload-icon">📁</span>
-      <p><strong>Upload Document Images / PDFs (Select one or multiple files)</strong></p>
-      <p class="subtitle">Drag & drop or click to add Aadhaar Front, Back, PAN Card, Passport, etc.</p>
+function initPipelineUI() {
+  const container = document.getElementById("pipelineStagesList");
+  container.innerHTML = "";
+  STAGE_DEFINITIONS.forEach(stage => {
+    const el = document.createElement("div");
+    el.className = "stage-item status-pending";
+    el.id = `ui_${stage.id}`;
+    el.innerHTML = `
+      <div class="stage-header" onclick="toggleStageDetails('${stage.id}')">
+        <div class="stage-title">
+          <span class="stage-num">${stage.num}</span>
+          <span>${stage.name}</span>
+        </div>
+        <div id="badge_${stage.id}">
+          <span class="badge badge-neutral">Pending</span>
+        </div>
+      </div>
+      <div class="stage-detail" id="detail_${stage.id}" style="display: none;">
+        <div class="stage-message" id="msg_${stage.id}">${stage.desc}</div>
+        <ul class="flag-list" id="flags_${stage.id}"></ul>
+      </div>
     `;
-    return;
+    container.appendChild(el);
+  });
+}
+
+function updateStageUI(stageId, status, message, flags = []) {
+  const item = document.getElementById(`ui_${stageId}`);
+  const badge = document.getElementById(`badge_${stageId}`);
+  const msg = document.getElementById(`msg_${stageId}`);
+  const flagsList = document.getElementById(`flags_${stageId}`);
+
+  if (!item || !badge) return;
+
+  item.className = `stage-item status-${status.toLowerCase()}`;
+  
+  let badgeHtml = "";
+  if (status === "VERIFIED") {
+    badgeHtml = `<span class="badge badge-success">✓ Verified</span>`;
+  } else if (status === "MANUAL_REVIEW") {
+    badgeHtml = `<span class="badge badge-warning">⚠️ Manual Review</span>`;
+  } else if (status === "FAILED") {
+    badgeHtml = `<span class="badge badge-danger">✗ Failed</span>`;
+  } else if (status === "PROCESSING") {
+    badgeHtml = `<span class="badge badge-info"><span class="spinner" style="width:12px;height:12px;border-width:2px;"></span> Processing</span>`;
+  } else {
+    badgeHtml = `<span class="badge badge-neutral">Pending</span>`;
+  }
+  badge.innerHTML = badgeHtml;
+
+  if (message && msg) msg.innerText = message;
+  if (flagsList && flags.length > 0) {
+    flagsList.innerHTML = flags.map(f => {
+      const isWarn = status === "MANUAL_REVIEW";
+      return `<li class="flag-item ${isWarn ? 'flag-warning' : 'flag-danger'}"><span>${isWarn ? '⚠️' : '❌'}</span><span>${f}</span></li>`;
+    }).join("");
+  }
+}
+
+function toggleStageDetails(stageId) {
+  const detail = document.getElementById(`detail_${stageId}`);
+  if (detail) {
+    detail.style.display = detail.style.display === "none" ? "block" : "none";
+  }
+}
+
+async function handleFormSubmit(event) {
+  event.preventDefault();
+  const warningEl = document.getElementById("validationWarning");
+  warningEl.innerText = "";
+
+  // Check mandatory file upload if not in sample demo mode
+  if (!isSampleMode) {
+    const parentCert = document.getElementById("parent_community_certificate").files[0];
+    const birthCert = document.getElementById("birth_certificate").files[0];
+    const aadhaar = document.getElementById("aadhaar_card").files[0];
+    const family = document.getElementById("family_card").files[0];
+
+    if (!parentCert || !birthCert || !aadhaar || !family) {
+      warningEl.innerText = "All 4 supporting documents are mandatory. Please upload all files or click 'Demo: Load Official Sample Data'.";
+      return;
+    }
   }
 
-  dropzoneContent.innerHTML = `
-    <span class="upload-icon">✅</span>
-    <p style="color: #16a34a;"><strong>${attachedFiles.length} Document(s) Attached</strong></p>
-    <p class="subtitle" style="color: #2563eb; font-weight: 600;">Click or drop more files to add to list</p>
+  // Setup UI for processing
+  const btnSubmit = document.getElementById("btnSubmitVerify");
+  btnSubmit.disabled = true;
+  btnSubmit.innerHTML = `<span class="spinner"></span> Processing 8-Stage Pipeline...`;
+
+  const pipelineSection = document.getElementById("pipelineSection");
+  pipelineSection.style.display = "block";
+  pipelineSection.scrollIntoView({ behavior: "smooth" });
+
+  initPipelineUI();
+  document.getElementById("matrixContainer").style.display = "none";
+  document.getElementById("outcomeContainer").style.display = "none";
+  document.getElementById("pipelineStatusBanner").innerHTML = `
+    <span class="spinner spinner-primary"></span> Executing bilingual OCR extraction and multi-stage verification... Please wait (15-30s on CPU).
   `;
 
-  attachedFiles.forEach((file, index) => {
-    const chip = document.createElement('div');
-    chip.className = 'file-chip';
-    chip.innerHTML = `
-      <span>📄 ${file.name} (${formatFileSize(file.size)})</span>
-      <button type="button" class="remove-btn" title="Remove document" onclick="removeAttachedFile(${index})">✕</button>
-    `;
-    container.appendChild(chip);
-  });
-}
-
-// Add new files to state (avoid duplicates)
-function addFilesToAccumulator(newFiles) {
-  Array.from(newFiles).forEach(file => {
-    const isDuplicate = attachedFiles.some(f => f.name === file.name && f.size === file.size);
-    if (!isDuplicate) {
-      attachedFiles.push(file);
+  // Simulate active stage transitions for user visual feedback while request completes
+  let simulatedStage = 1;
+  updateStageUI("stage_1", "PROCESSING", "Validating applicant details and statutory rules...");
+  const simInterval = setInterval(() => {
+    simulatedStage++;
+    if (simulatedStage <= 5) {
+      updateStageUI(`stage_${simulatedStage - 1}`, "VERIFIED", "Stage completed.");
+      updateStageUI(`stage_${simulatedStage}`, "PROCESSING", `Extracting and analyzing document ${simulatedStage}...`);
     }
-  });
-  renderFileListUI();
-}
-
-// Remove document from list
-function removeAttachedFile(index) {
-  attachedFiles.splice(index, 1);
-  renderFileListUI();
-}
-
-// 1. Listen for file selection & drag-drop events
-document.addEventListener("DOMContentLoaded", () => {
-  const fileInput = document.getElementById('documentInput');
-  const dropzone = document.querySelector('.upload-dropzone');
-
-  if (fileInput) {
-    fileInput.addEventListener('change', () => {
-      if (fileInput.files && fileInput.files.length > 0) {
-        addFilesToAccumulator(fileInput.files);
-        fileInput.value = ''; // Reset input to allow re-adding same file if needed
-      }
-    });
-  }
-
-  if (dropzone) {
-    ['dragenter', 'dragover'].forEach(eventName => {
-      dropzone.addEventListener(eventName, (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        dropzone.classList.add('dragover');
-      }, false);
-    });
-
-    ['dragleave', 'drop'].forEach(eventName => {
-      dropzone.addEventListener(eventName, (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        dropzone.classList.remove('dragover');
-      }, false);
-    });
-
-    dropzone.addEventListener('drop', (e) => {
-      const dt = e.dataTransfer;
-      if (dt && dt.files && dt.files.length > 0) {
-        addFilesToAccumulator(dt.files);
-      }
-    });
-  }
-});
-
-// 2. Triggers document upload to backend and invokes autofill
-async function processDocument() {
-  const status = document.getElementById('status');
-
-  if (!attachedFiles || attachedFiles.length === 0) {
-    alert("Please select or drop at least one document image or PDF first!");
-    return;
-  }
-
-  status.innerText = `⏳ Processing ${attachedFiles.length} document file(s) with AI...`;
-  status.style.color = "#2563eb";
-
-  const formData = new FormData();
-  for (let i = 0; i < attachedFiles.length; i++) {
-    formData.append('files', attachedFiles[i]);
-  }
+  }, 4000);
 
   try {
-    const response = await fetch('http://localhost:8000/extract', {
-      method: 'POST',
-      body: formData
-    });
-
-    if (!response.ok) {
-      throw new Error(`Server returned status ${response.status}`);
+    let response;
+    if (isSampleMode) {
+      response = await fetch("/api/verify/sample", { method: "POST" });
+    } else {
+      const form = document.getElementById("verificationForm");
+      const formData = new FormData(form);
+      response = await fetch("/api/verify", {
+        method: "POST",
+        body: formData
+      });
     }
 
-    const data = await response.json();
-    console.log("Extracted Data Received from multiple documents:", data);
-    
-    autoFillForm(data);
-    
-    status.innerText = `✅ AI Extraction Complete! (${attachedFiles.length} document(s) processed)`;
-    status.style.color = "#16a34a";
-  } catch (err) {
-    console.error("Extraction error:", err);
-    status.innerText = "❌ Error processing document(s). Ensure FastAPI backend is running on port 8000.";
-    status.style.color = "#dc2626";
+    clearInterval(simInterval);
+
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      throw new Error(errData.detail || `Server error (${response.status})`);
+    }
+
+    const report = await response.json();
+    renderPipelineResults(report);
+  } catch (error) {
+    clearInterval(simInterval);
+    console.error("Pipeline failure:", error);
+    document.getElementById("pipelineStatusBanner").innerHTML = `
+      <span style="color: var(--danger);">❌ Verification Pipeline Error: ${error.message}</span>
+    `;
+    alert(`Verification Pipeline Error: ${error.message}`);
+  } finally {
+    btnSubmit.disabled = false;
+    btnSubmit.innerHTML = `<span>🚀 Execute 8-Stage Verification Pipeline</span>`;
   }
 }
 
-// 3. Iterates through extracted JSON and populates matching DOM inputs
-function autoFillForm(data) {
-  // Update face photo preview if present
-  if (data.photo_base64) {
-    const photoImg = document.getElementById('photo_preview');
-    if (photoImg) {
-      photoImg.src = data.photo_base64;
-    }
-  }
-
-  // Iterate through key-value pairs
-  Object.entries(data).forEach(([key, value]) => {
-    if (!value || key === 'photo_base64') return;
-
-    const aliases = FIELD_ALIASES[key] || [key];
-
-    for (const alias of aliases) {
-      const element = document.querySelector(
-        `input[id="${alias}" i], select[id="${alias}" i], textarea[id="${alias}" i], input[name="${alias}" i]`
-      );
-
-      if (element) {
-        if (element.tagName.toLowerCase() === 'select') {
-          // Case-insensitive match for <select> options
-          let matchedOption = Array.from(element.options).find(
-            opt => opt.value.toLowerCase() === String(value).toLowerCase() ||
-                   opt.text.toLowerCase().includes(String(value).toLowerCase())
-          );
-          if (matchedOption) {
-            element.value = matchedOption.value;
-          } else {
-            element.value = value;
-          }
-        } else {
-          element.value = value;
-        }
-        
-        element.dispatchEvent(new Event('input', { bubbles: true }));
-        element.dispatchEvent(new Event('change', { bubbles: true }));
-        
-        // Brief blue highlight feedback
-        element.style.transition = "background-color 0.5s";
-        element.style.backgroundColor = "#e0f2fe";
-        setTimeout(() => {
-          element.style.backgroundColor = "";
-        }, 1500);
-
-        break;
-      }
+function renderPipelineResults(report) {
+  // Update stage statuses with official backend report
+  report.stages.forEach(st => {
+    updateStageUI(st.stage_id, st.status, st.message, st.flags || []);
+    // Auto-open detail if there are flags
+    if (st.flags && st.flags.length > 0) {
+      const detail = document.getElementById(`detail_${st.stage_id}`);
+      if (detail) detail.style.display = "block";
     }
   });
 
-  // Default application date to today
-  const declDate = document.getElementById('declaration_date');
-  if (declDate && !declDate.value) {
-    declDate.value = new Date().toISOString().split('T')[0];
+  // Update overall badge & banner
+  const overallBadge = document.getElementById("pipelineOverallBadge");
+  const banner = document.getElementById("pipelineStatusBanner");
+
+  if (report.overall_status === "VERIFIED") {
+    overallBadge.innerHTML = `<span class="badge badge-success">✓ Fully Verified</span>`;
+    banner.innerHTML = `✅ <strong>Pre-Verification Successful:</strong> All supporting documents and statutory community inheritance rules verified. Official application ready for Tahsildar sign-off.`;
+  } else if (report.overall_status === "MANUAL_REVIEW") {
+    overallBadge.innerHTML = `<span class="badge badge-warning">⚠️ Manual Review Required</span>`;
+    banner.innerHTML = `⚠️ <strong>Pre-Verification Complete with Notes:</strong> Application document prepared with designated inquiry remarks for Tahsildar field scrutiny.`;
+  } else {
+    overallBadge.innerHTML = `<span class="badge badge-danger">✗ Verification Failed</span>`;
+    banner.innerHTML = `❌ <strong>Verification Rejected:</strong> Critical discrepancies detected in submitted supporting documents.`;
+  }
+
+  // Render Cross-Document Consistency Matrix
+  if (report.cross_matches && report.cross_matches.length > 0) {
+    const matrixContainer = document.getElementById("matrixContainer");
+    const matrixBody = document.getElementById("matrixTableBody");
+    matrixBody.innerHTML = "";
+
+    report.cross_matches.forEach(m => {
+      const row = document.createElement("tr");
+      let statusBadge = "";
+      if (m.status === "VERIFIED") {
+        statusBadge = `<span class="badge badge-success">✓ ${m.match_score.toFixed(0)}% Match</span>`;
+      } else if (m.status === "MANUAL_REVIEW") {
+        statusBadge = `<span class="badge badge-warning">⚠️ ${m.match_score.toFixed(0)}% Scrutiny</span>`;
+      } else {
+        statusBadge = `<span class="badge badge-danger">✗ Mismatch</span>`;
+      }
+
+      row.innerHTML = `
+        <td><strong>${m.field_name}</strong></td>
+        <td><code>${m.application_value || "—"}</code></td>
+        <td><code>${m.document_value || "—"}</code></td>
+        <td><strong>${m.match_score.toFixed(1)}%</strong></td>
+        <td>${statusBadge}</td>
+        <td>${m.remarks || "—"}</td>
+      `;
+      matrixBody.appendChild(row);
+    });
+    matrixContainer.style.display = "block";
+  }
+
+  // Render Final Outcome & PDF Action Box
+  renderOutcomeBox(report);
+}
+
+function renderOutcomeBox(report) {
+  const outcomeContainer = document.getElementById("outcomeContainer");
+  outcomeContainer.style.display = "block";
+
+  const isVerified = report.overall_status === "VERIFIED";
+  const isReview = report.overall_status === "MANUAL_REVIEW";
+  const cardClass = isVerified ? "verified" : (isReview ? "manual_review" : "failed");
+
+  let html = `
+    <div class="outcome-card ${cardClass}">
+      <div class="outcome-header">
+        <span style="font-size: 2rem;">${isVerified ? '✅' : (isReview ? '📋' : '❌')}</span>
+        <div>
+          <h3>${isVerified ? 'Application Pre-Verified Successfully' : (isReview ? 'Application Pre-Verified with Tahsildar Scrutiny Notes' : 'Application Verification Rejected')}</h3>
+          <p style="font-size: 0.88rem; margin-top: 0.2rem;">
+            Application Reference ID: <strong><code>${report.application_ref}</code></strong> | Submitted: ${new Date(report.submission_time).toLocaleString()}
+          </p>
+        </div>
+      </div>
+  `;
+
+  if (report.can_generate_pdf && report.pdf_filename) {
+    html += `
+      <div style="font-size: 0.88rem; color: var(--neutral-700); background: white; padding: 1rem; border-radius: var(--radius-sm); border: 1px solid var(--neutral-200);">
+        📄 <strong>Tahsildar Application Request PDF Generated:</strong>
+        <p style="margin-top: 0.25rem;">The official structured application document has been compiled according to Tamil Nadu Revenue Department standards, containing the applicant profile, statutory inheritance basis, audit verification summary, and designated endorsement blocks for the Village Administrative Officer (VAO), Revenue Inspector (RI), and Tahsildar.</p>
+      </div>
+
+      <div class="outcome-actions">
+        <a href="/api/pdf/preview/${encodeURIComponent(report.pdf_filename)}" target="_blank" class="btn btn-primary">
+          <span>👁️ Preview Application Request PDF</span>
+        </a>
+        <a href="/api/pdf/download/${encodeURIComponent(report.pdf_filename)}" class="btn btn-accent">
+          <span>⬇️ Download PDF for Tahsildar Submission</span>
+        </a>
+        <button type="button" class="btn btn-outline" onclick="toggleAuditJson()">
+          <span>🔍 View Verification Audit JSON</span>
+        </button>
+      </div>
+
+      <div id="auditJsonBox" style="display: none; margin-top: 1rem;">
+        <pre style="background: var(--neutral-900); color: #38bdf8; padding: 1rem; border-radius: var(--radius-sm); overflow-x: auto; font-size: 0.8rem; max-height: 350px;">${JSON.stringify(report, null, 2)}</pre>
+      </div>
+    `;
+  } else {
+    html += `
+      <div style="font-size: 0.88rem; color: var(--danger); background: white; padding: 1rem; border-radius: var(--radius-sm); border: 1px solid var(--danger);">
+        ❌ <strong>Application Request PDF Generation Suppressed:</strong>
+        <p style="margin-top: 0.25rem;">Due to critical verification failures, the application document cannot be generated automatically. Discrepancies must be resolved before resubmission.</p>
+      </div>
+    `;
+  }
+
+  html += `</div>`;
+  outcomeContainer.innerHTML = html;
+}
+
+function toggleAuditJson() {
+  const box = document.getElementById("auditJsonBox");
+  if (box) {
+    box.style.display = box.style.display === "none" ? "block" : "none";
   }
 }

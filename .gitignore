@@ -8,4 +8,6 @@ env/
 venv/
 backend/*.jpg
 backend/*.png
+backend/uploads/
+backend/generated_pdfs/*.pdf
 .DS_Store

@@ -3,215 +3,328 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>NVSP - Official Form 6 Portal (Mock)</title>
+  <title>Community Certificate Application Verification System — Govt of Tamil Nadu</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 
-  <div class="app-container">
-    <header class="gov-header">
-      <div class="logo-box">
-        <span class="emblem">🏛️</span>
-        <div>
-          <h1>ELECTION COMMISSION OF INDIA</h1>
-          <p>National Voters' Service Portal — Form 6 (Application for New Voter)</p>
+  <!-- Top Tricolor Bar -->
+  <div class="gov-topbar"></div>
+
+  <!-- Header -->
+  <header class="portal-header">
+    <div class="header-container">
+      <div class="branding-group">
+        <div class="tn-emblem">🏛️</div>
+        <div class="title-group">
+          <h1>GOVERNMENT OF TAMIL NADU</h1>
+          <p>Revenue & Disaster Management Department — Community Certificate Verification System</p>
         </div>
       </div>
-      <span class="badge">ECI-FORM6-v2026</span>
-    </header>
-
-    <!-- Upload & AI Extraction Section -->
-    <section class="card upload-card">
-      <div class="card-header">
-        <h2>1. Upload Supporting Document(s)</h2>
-        <span class="step-indicator">Step 1 of 2</span>
-      </div>
-      
-      <div class="upload-dropzone">
-        <input type="file" id="documentInput" accept="image/*,.pdf" multiple class="file-input">
-        <div class="dropzone-content">
-          <span class="upload-icon">📁</span>
-          <p><strong>Upload Document Images / PDFs (Select one or multiple files)</strong></p>
-          <p class="subtitle">Drag & drop or click to add Aadhaar Front, Back, PAN Card, Passport, etc.</p>
-        </div>
-      </div>
-
-      <div id="fileListContainer" class="file-list-container"></div>
-
-      <div class="action-bar">
-        <button type="button" class="btn btn-primary" onclick="processDocument()">
-          <span>⚡ Process Documents & Auto-Fill</span>
+      <div class="header-actions">
+        <span class="badge badge-info">v2.0 e-Gov Scrutiny</span>
+        <button type="button" class="btn btn-demo" id="btnLoadSample" onclick="loadSampleData()">
+          <span>⚡ Demo: Load Official Sample Data</span>
         </button>
-        <span id="status" class="status-msg"></span>
+      </div>
+    </div>
+  </header>
+
+  <main class="main-container">
+
+    <!-- Official Statutory Disclaimer Notice -->
+    <div class="notice-box">
+      <div>
+        <strong>📌 Official Statutory Notice:</strong>
+        <p>This automated portal performs pre-verification of supporting documents, bilingual (தமிழ் / English) cross-record consistency checks, and statutory community inheritance matching. Upon successful verification, it prepares an official <strong>Community Certificate Application Request PDF</strong> for field inquiry and final order by the competent <strong>Tahsildar / Zonal Deputy Tahsildar</strong>. This system does <em>not</em> generate an officially signed or approved community certificate.</p>
+      </div>
+    </div>
+
+    <!-- Main Verification Form -->
+    <form id="verificationForm" onsubmit="handleFormSubmit(event)">
+
+      <!-- SECTION 1: APPLICANT PARTICULARS -->
+      <section class="card">
+        <div class="card-header">
+          <h2><span>👤</span> 1. Applicant & Family Particulars</h2>
+          <span class="badge badge-neutral">Stage 1 Input</span>
+        </div>
+        <div class="card-body">
+          
+          <div class="sub-section-title"><span>👶</span> Child / Applicant Details</div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="child_name">Child Full Name (English) <span class="required">*</span></label>
+              <input type="text" id="child_name" name="child_name" class="form-control" required placeholder="e.g. Deva S">
+            </div>
+
+            <div class="form-group">
+              <label for="child_gender">Gender <span class="required">*</span></label>
+              <select id="child_gender" name="child_gender" class="form-control" required>
+                <option value="">-- Select Gender --</option>
+                <option value="Male">Male (ஆண்)</option>
+                <option value="Female">Female (பெண்)</option>
+                <option value="Other">Other (மூன்றாம் பாலினம்)</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="child_dob">Date of Birth <span class="required">*</span></label>
+              <input type="text" id="child_dob" name="child_dob" class="form-control" required placeholder="DD/MM/YYYY (e.g. 21/02/2006)">
+            </div>
+
+            <div class="form-group">
+              <label for="child_community">Claimed Community <span class="required">*</span></label>
+              <select id="child_community" name="child_community" class="form-control" required>
+                <option value="">-- Select Community Category --</option>
+                <option value="MBC">MBC (Most Backward Class / மிகவும் பிற்படுத்தப்பட்டோர்)</option>
+                <option value="BC">BC (Backward Class / பிற்படுத்தப்பட்டோர்)</option>
+                <option value="SC">SC (Scheduled Caste / ஆதி திராவிடர்)</option>
+                <option value="ST">ST (Scheduled Tribe / பழங்குடியினர்)</option>
+                <option value="OC">OC (Other Communities / இதர வகுப்பினர்)</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="child_sub_caste">Claimed Sub-Caste / Community Name</label>
+              <input type="text" id="child_sub_caste" name="child_sub_caste" class="form-control" placeholder="e.g. Hindu Vanniakula Kshatriya">
+            </div>
+          </div>
+
+          <!-- Community Inheritance Section -->
+          <div class="sub-section-title"><span>📜</span> Statutory Community Inheritance & Parent Details</div>
+          <div class="inheritance-rule-box">
+            ⚖️ <strong>Tamil Nadu Community Inheritance Rule:</strong> By statutory government rules, the child inherits the community of the <strong>father</strong>. A <strong>mother's community certificate</strong> is admissible as an alternative supporting document subject to field inquiry by the Revenue Inspector (RI) / Tahsildar. At least one parent's community certificate must be verified.
+          </div>
+
+          <div class="form-grid">
+            <div class="form-group full-width">
+              <label>Primary Parent Certificate Submitted for Inheritance Verification <span class="required">*</span></label>
+              <div class="radio-group">
+                <label class="radio-item">
+                  <input type="radio" name="parent_certificate_submitted" value="mother" checked>
+                  <strong>Mother's Certificate</strong> (Supporting Alternative)
+                </label>
+                <label class="radio-item">
+                  <input type="radio" name="parent_certificate_submitted" value="father">
+                  <strong>Father's Certificate</strong> (Direct Statutory Lineage)
+                </label>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="father_name">Father's Full Name <span class="required">*</span></label>
+              <input type="text" id="father_name" name="father_name" class="form-control" required placeholder="e.g. Shankar">
+            </div>
+
+            <div class="form-group">
+              <label for="father_community">Father's Community</label>
+              <select id="father_community" name="father_community" class="form-control">
+                <option value="MBC">MBC</option>
+                <option value="BC">BC</option>
+                <option value="SC">SC</option>
+                <option value="ST">ST</option>
+                <option value="OC">OC</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="mother_name">Mother's Full Name <span class="required">*</span></label>
+              <input type="text" id="mother_name" name="mother_name" class="form-control" required placeholder="e.g. Sumathi">
+            </div>
+
+            <div class="form-group">
+              <label for="mother_community">Mother's Community</label>
+              <select id="mother_community" name="mother_community" class="form-control">
+                <option value="MBC">MBC</option>
+                <option value="BC">BC</option>
+                <option value="SC">SC</option>
+                <option value="ST">ST</option>
+                <option value="OC">OC</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Residential Address -->
+          <div class="sub-section-title"><span>🏠</span> Residential Particulars</div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="door_no">Door / Plot No.</label>
+              <input type="text" id="door_no" name="door_no" class="form-control" placeholder="e.g. 78">
+            </div>
+
+            <div class="form-group">
+              <label for="street">Street / Locality</label>
+              <input type="text" id="street" name="street" class="form-control" placeholder="e.g. 2nd Street, Indra Gandhi Nagar">
+            </div>
+
+            <div class="form-group">
+              <label for="village_town">Village / Town / Area</label>
+              <input type="text" id="village_town" name="village_town" class="form-control" placeholder="e.g. Vyasarpadi">
+            </div>
+
+            <div class="form-group">
+              <label for="taluk">Taluk</label>
+              <input type="text" id="taluk" name="taluk" class="form-control" placeholder="e.g. Perambur">
+            </div>
+
+            <div class="form-group">
+              <label for="district">District</label>
+              <input type="text" id="district" name="district" class="form-control" placeholder="e.g. Chennai">
+            </div>
+
+            <div class="form-group">
+              <label for="pincode">PIN Code</label>
+              <input type="text" id="pincode" name="pincode" class="form-control" placeholder="e.g. 600039">
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- SECTION 2: 4 MANDATORY SUPPORTING DOCUMENTS -->
+      <section class="card">
+        <div class="card-header">
+          <h2><span>📂</span> 2. Mandatory Supporting Documents (4 Documents Required)</h2>
+          <span class="badge badge-warning">4 Documents Mandatory</span>
+        </div>
+        <div class="card-body">
+          <p style="font-size: 0.88rem; color: var(--neutral-600); margin-bottom: 1.25rem;">
+            Upload scanned copies or official digital PDFs for independent OCR extraction and cross-verification. Supported: <strong>JPEG, PNG, PDF</strong>.
+          </p>
+
+          <div class="upload-grid">
+
+            <!-- Document 1: Parent Community Certificate -->
+            <div class="doc-upload-box" id="box_parent_community">
+              <div>
+                <div class="doc-icon">🏛️</div>
+                <h3>1. Parent Community Certificate</h3>
+                <p>Verifies parent community & statutory eligibility (Father / Mother certificate)</p>
+              </div>
+              <div>
+                <div id="preview_parent_community" class="file-name-preview" style="display:none;"></div>
+                <input type="file" id="parent_community_certificate" name="parent_community_certificate" accept=".jpg,.jpeg,.png,.pdf" onchange="handleFileSelect(this, 'preview_parent_community', 'box_parent_community')">
+                <button type="button" class="btn-upload-trigger" onclick="document.getElementById('parent_community_certificate').click()">Choose File</button>
+              </div>
+            </div>
+
+            <!-- Document 2: Child Birth Certificate -->
+            <div class="doc-upload-box" id="box_birth">
+              <div>
+                <div class="doc-icon">👶</div>
+                <h3>2. Child Birth Certificate</h3>
+                <p>Verifies child name, DOB & municipal registration particulars</p>
+              </div>
+              <div>
+                <div id="preview_birth" class="file-name-preview" style="display:none;"></div>
+                <input type="file" id="birth_certificate" name="birth_certificate" accept=".jpg,.jpeg,.png,.pdf" onchange="handleFileSelect(this, 'preview_birth', 'box_birth')">
+                <button type="button" class="btn-upload-trigger" onclick="document.getElementById('birth_certificate').click()">Choose File</button>
+              </div>
+            </div>
+
+            <!-- Document 3: Child Aadhaar Card -->
+            <div class="doc-upload-box" id="box_aadhaar">
+              <div>
+                <div class="doc-icon">🪪</div>
+                <h3>3. Child Aadhaar Card</h3>
+                <p>Verifies national identity, guardian link & residential address</p>
+              </div>
+              <div>
+                <div id="preview_aadhaar" class="file-name-preview" style="display:none;"></div>
+                <input type="file" id="aadhaar_card" name="aadhaar_card" accept=".jpg,.jpeg,.png,.pdf" onchange="handleFileSelect(this, 'preview_aadhaar', 'box_aadhaar')">
+                <button type="button" class="btn-upload-trigger" onclick="document.getElementById('aadhaar_card').click()">Choose File</button>
+              </div>
+            </div>
+
+            <!-- Document 4: Family Card / Ration Card (Tamil) -->
+            <div class="doc-upload-box" id="box_family">
+              <div>
+                <div class="doc-icon">🌾</div>
+                <h3>4. Family Card (தமிழ்)</h3>
+                <p>Verifies household relationship & family roster in Tamil</p>
+              </div>
+              <div>
+                <div id="preview_family" class="file-name-preview" style="display:none;"></div>
+                <input type="file" id="family_card" name="family_card" accept=".jpg,.jpeg,.png,.pdf" onchange="handleFileSelect(this, 'preview_family', 'box_family')">
+                <button type="button" class="btn-upload-trigger" onclick="document.getElementById('family_card').click()">Choose File</button>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Action Row -->
+          <div class="actions-row">
+            <div>
+              <span id="validationWarning" style="color: var(--danger); font-size: 0.85rem; font-weight: 600;"></span>
+            </div>
+            <button type="submit" class="btn btn-primary btn-lg" id="btnSubmitVerify">
+              <span>🚀 Execute 8-Stage Verification Pipeline</span>
+            </button>
+          </div>
+
+        </div>
+      </section>
+
+    </form>
+
+    <!-- SECTION 3: 8-STAGE VERIFICATION PIPELINE TRACKER -->
+    <section class="card" id="pipelineSection" style="display: none;">
+      <div class="card-header">
+        <h2><span>🔍</span> 3. Document Verification Pipeline (8 Stages)</h2>
+        <div id="pipelineOverallBadge">
+          <span class="badge badge-info">Processing</span>
+        </div>
+      </div>
+      <div class="card-body">
+        
+        <!-- Live Status Banner -->
+        <div id="pipelineStatusBanner" style="margin-bottom: 1.25rem; font-size: 0.95rem; font-weight: 600; color: var(--primary);">
+          Initializing verification pipeline...
+        </div>
+
+        <div class="pipeline-container" id="pipelineStagesList">
+          <!-- Stage items populated dynamically via JS -->
+        </div>
+
+        <!-- SECTION 4: CROSS-DOCUMENT CONSISTENCY MATRIX -->
+        <div id="matrixContainer" style="display: none; margin-top: 2rem;">
+          <div class="sub-section-title"><span>📊</span> 4. Cross-Document Consistency Matrix</div>
+          <div class="table-responsive">
+            <table class="match-table">
+              <thead>
+                <tr>
+                  <th>Field</th>
+                  <th>Application Value</th>
+                  <th>Document Extracted Value</th>
+                  <th>Match Score</th>
+                  <th>Status</th>
+                  <th>Officer Audit Remarks</th>
+                </tr>
+              </thead>
+              <tbody id="matrixTableBody">
+                <!-- Rows injected dynamically -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- SECTION 5: FINAL ASSESSMENT & PDF GENERATION -->
+        <div id="outcomeContainer" style="display: none;">
+          <!-- Outcome card populated dynamically -->
+        </div>
+
       </div>
     </section>
 
-    <!-- Expanded Voter Application Form -->
-    <form id="voterForm" onsubmit="event.preventDefault(); alert('Form 6 Application Submitted Successfully!');">
- <!-- Section 2A: Personal Information & Passport Photo -->
-<section class="card form-card">
-  <div class="card-header">
-    <h2>2A. Personal Particulars & Applicant Photo</h2>
-  </div>
+  </main>
 
-  <div class="form-layout">
-    <!-- Photo Upload & Auto-Crop Preview Sidebar -->
-    <div class="photo-sidebar">
-      <div class="photo-box">
-        <img id="photo_preview" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='140' viewBox='0 0 120 140'><rect width='100%' height='100%' fill='%23edf2f7'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='%23a0aec0' font-family='sans-serif' font-size='11'>Passport Photo</text></svg>" alt="Applicant Photo">
-      </div>
-      <p class="photo-label">Auto-Cropped from ID</p>
-      
-      <!-- Direct Passport Photo Upload Option -->
-      <label for="passportPhotoInput" class="btn btn-primary" style="font-size: 11px; padding: 6px 10px; margin-top: 6px; cursor: pointer;">
-        📷 Upload Passport Photo
-      </label>
-      <input type="file" id="passportPhotoInput" accept="image/*" style="display: none;" onchange="previewManualPhoto(this)">
-    </div>
-
-    <!-- Fields Grid -->
-    <div class="fields-grid">
-      <div class="form-group full-width">
-        <label for="applicant_fullname">Full Name of Applicant</label>
-        <input type="text" id="applicant_fullname" name="applicant_fullname" placeholder="First Name Middle Name Surname" required>
-      </div>
-
-      <div class="form-group">
-        <label for="date_of_birth">Date of Birth</label>
-        <input type="date" id="date_of_birth" name="date_of_birth" required>
-      </div>
-
-      <div class="form-group">
-        <label for="gender">Gender</label>
-        <select id="gender" name="gender" required>
-          <option value="">Select Gender</option>
-          <option value="Male">Male</option>
-          <option value="Female">Female</option>
-          <option value="Third Gender">Third Gender</option>
-        </select>
-      </div>
-
-      <div class="form-group">
-        <label for="mobile_number">Mobile Number</label>
-        <input type="tel" id="mobile_number" name="mobile_number" placeholder="10-digit Mobile No">
-      </div>
-
-      <div class="form-group">
-        <label for="email_id">Email Address</label>
-        <input type="email" id="email_id" name="email_id" placeholder="applicant@email.com">
-      </div>
-
-      <div class="form-group full-width">
-        <label for="doc_identity_number">Extracted Document / Reference Number</label>
-        <input type="text" id="doc_identity_number" name="doc_identity_number" placeholder="PAN / Passport / License / Aadhaar No.">
-      </div>
-    </div>
-  </div>
-</section>
-      <!-- Section 2B: Family / Relative Details -->
-      <section class="card form-card" style="margin-top: 20px;">
-        <div class="card-header">
-          <h2>2B. Details of Relative</h2>
-        </div>
-        <div class="fields-grid">
-          <div class="form-group">
-            <label for="relation_type">Type of Relation</label>
-            <select id="relation_type" name="relation_type">
-              <option value="Father">Father</option>
-              <option value="Mother">Mother</option>
-              <option value="Husband">Husband</option>
-              <option value="Legal Guardian">Legal Guardian</option>
-            </select>
-          </div>
-
-          <div class="form-group">
-            <label for="relative_name">Name of Relative</label>
-            <input type="text" id="relative_name" name="relative_name" placeholder="Relative's Full Name">
-          </div>
-        </div>
-      </section>
-
-      <!-- Section 2C: Address Details -->
-      <section class="card form-card" style="margin-top: 20px;">
-        <div class="card-header">
-          <h2>2C. Present Ordinary Residence Details</h2>
-        </div>
-        <div class="fields-grid">
-          <div class="form-group">
-            <label for="house_no">House / Door / Apartment No.</label>
-            <input type="text" id="house_no" name="house_no" placeholder="e.g. Flat 302, Bldg A">
-          </div>
-
-          <div class="form-group">
-            <label for="street_address">Street / Road / Lane / Locality</label>
-            <input type="text" id="street_address" name="street_address" placeholder="e.g. Gandhi Road">
-          </div>
-
-          <div class="form-group">
-            <label for="village_town">Village / Town / City</label>
-            <input type="text" id="village_town" name="village_town" placeholder="City or Village Name">
-          </div>
-
-          <div class="form-group">
-            <label for="post_office">Post Office</label>
-            <input type="text" id="post_office" name="post_office" placeholder="Post Office Branch">
-          </div>
-
-          <div class="form-group">
-            <label for="pincode">PIN Code</label>
-            <input type="text" id="pincode" name="pincode" placeholder="6-digit PIN Code">
-          </div>
-
-          <div class="form-group">
-            <label for="district">District</label>
-            <input type="text" id="district" name="district" placeholder="District Name">
-          </div>
-
-          <div class="form-group">
-            <label for="state">State / Union Territory</label>
-            <input type="text" id="state" name="state" placeholder="State Name">
-          </div>
-
-          <div class="form-group">
-            <label for="constituency">Assembly Constituency No. / Name</label>
-            <input type="text" id="constituency" name="constituency" placeholder="e.g. 014 - Central">
-          </div>
-        </div>
-      </section>
-
-      <!-- Section 2D: Birth & Declaration Details -->
-      <section class="card form-card" style="margin-top: 20px;">
-        <div class="card-header">
-          <h2>2D. Town / Place of Birth & Declaration</h2>
-        </div>
-        <div class="fields-grid">
-          <div class="form-group">
-            <label for="birth_town">Town / Village of Birth</label>
-            <input type="text" id="birth_town" name="birth_town" placeholder="Town of Birth">
-          </div>
-          <div class="form-group">
-            <label for="birth_state">State of Birth</label>
-            <input type="text" id="birth_state" name="birth_state" placeholder="State of Birth">
-          </div>
-          <div class="form-group">
-            <label for="declaration_place">Place of Declaration</label>
-            <input type="text" id="declaration_place" name="declaration_place" placeholder="Current Location / City">
-          </div>
-          <div class="form-group">
-            <label for="declaration_date">Date of Application</label>
-            <input type="date" id="declaration_date" name="declaration_date">
-          </div>
-        </div>
-      </section>
-
-      <div class="form-actions" style="margin-top: 20px;">
-        <button type="submit" class="btn btn-success" style="padding: 14px; font-size: 16px;">
-          Submit Form 6 Official Application
-        </button>
-      </div>
-
-    </form>
-  </div>
+  <footer class="portal-footer">
+    <p>Government of Tamil Nadu — Revenue and Disaster Management Department</p>
+    <p style="margin-top: 0.25rem; font-size: 0.75rem; color: var(--neutral-600);">
+      Official Pre-Verification & Tahsildar Application Request Generator. Built with Bilingual OCR and Statutory Inheritance Verification.
+    </p>
+  </footer>
 
   <script src="app.js"></script>
 </body>
