@@ -1,6 +1,19 @@
 import logging
 import sys
 
+# Ensure UTF-8 output on Windows consoles to prevent cp1252 charmap encoding errors
+if hasattr(sys.stdout, 'reconfigure'):
+    try:
+        sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+    except Exception:
+        pass
+
+if hasattr(sys.stderr, 'reconfigure'):
+    try:
+        sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+    except Exception:
+        pass
+
 def get_logger(name: str = "app") -> logging.Logger:
     logger = logging.getLogger(name)
     if not logger.handlers:

@@ -22,9 +22,9 @@
         </div>
       </div>
       <div class="header-actions">
-        <span class="badge badge-info">v2.0 e-Gov Scrutiny</span>
-        <button type="button" class="btn btn-demo" id="btnLoadSample" onclick="loadSampleData()">
-          <span>⚡ Demo: Load Official Sample Data</span>
+        <span class="badge badge-info">v2.0 OCR Auto-Fill</span>
+        <button type="button" class="btn btn-demo" id="btnLoadSample" onclick="handleLoadSampleAndAutofill()">
+          <span>⚡ Demo: Load Sample Documents & Auto-Fill</span>
         </button>
       </div>
     </div>
@@ -35,23 +35,124 @@
     <!-- Official Statutory Disclaimer Notice -->
     <div class="notice-box">
       <div>
-        <strong>📌 Official Statutory Notice:</strong>
-        <p>This automated portal performs pre-verification of supporting documents, bilingual (தமிழ் / English) cross-record consistency checks, and statutory community inheritance matching. Upon successful verification, it prepares an official <strong>Community Certificate Application Request PDF</strong> for field inquiry and final order by the competent <strong>Tahsildar / Zonal Deputy Tahsildar</strong>. This system does <em>not</em> generate an officially signed or approved community certificate.</p>
+        <strong>📌 Official Statutory Notice & Workflow:</strong>
+        <p>
+          1. <strong>Upload supporting documents beforehand</strong> in Section 1.<br>
+          2. Click <strong>"Scan Documents & Auto-Fill Form"</strong> to extract all applicant and family details automatically via OCR.<br>
+          3. <strong>Review or edit</strong> the auto-filled particulars in Section 2.<br>
+          4. Click <strong>"Execute 8-Stage Verification Pipeline"</strong> to cross-verify records and generate the official <strong>Tahsildar Application Request PDF</strong>.
+        </p>
       </div>
     </div>
 
-    <!-- Main Verification Form -->
+    <!-- MAIN FORM -->
     <form id="verificationForm" onsubmit="handleFormSubmit(event)">
 
-      <!-- SECTION 1: APPLICANT PARTICULARS -->
-      <section class="card">
+      <!-- STEP 1: UPLOAD SUPPORTING DOCUMENTS BEFOREHAND (FIRST) -->
+      <section class="card" id="uploadSection">
         <div class="card-header">
-          <h2><span>👤</span> 1. Applicant & Family Particulars</h2>
-          <span class="badge badge-neutral">Stage 1 Input</span>
+          <h2><span>📂</span> Step 1: Upload Mandatory Supporting Documents (Uploaded Beforehand)</h2>
+          <span class="badge badge-warning">4 Documents Mandatory</span>
         </div>
         <div class="card-body">
+          <p style="font-size: 0.88rem; color: var(--neutral-600); margin-bottom: 1.25rem;">
+            Upload the 4 required supporting documents first. The bilingual OCR engine will analyze them and <strong>automatically populate</strong> the application form particulars below.
+          </p>
+
+          <div class="upload-grid">
+
+            <!-- Document 1: Parent Community Certificate -->
+            <div class="doc-upload-box" id="box_parent_community">
+              <div>
+                <div class="doc-icon">🏛️</div>
+                <h3>1. Parent Community Certificate</h3>
+                <p>Verifies parent community, sub-caste & G.O. schedule (Mother / Father cert)</p>
+              </div>
+              <div>
+                <div id="preview_parent_community" class="file-name-preview" style="display:none;"></div>
+                <input type="file" id="parent_community_certificate" name="parent_community_certificate" accept=".jpg,.jpeg,.png,.pdf" onchange="handleFileSelect(this, 'preview_parent_community', 'box_parent_community')">
+                <button type="button" class="btn-upload-trigger" onclick="document.getElementById('parent_community_certificate').click()">Choose File</button>
+              </div>
+            </div>
+
+            <!-- Document 2: Child Birth Certificate -->
+            <div class="doc-upload-box" id="box_birth">
+              <div>
+                <div class="doc-icon">👶</div>
+                <h3>2. Child Birth Certificate</h3>
+                <p>Verifies child name, DOB & municipal registration particulars</p>
+              </div>
+              <div>
+                <div id="preview_birth" class="file-name-preview" style="display:none;"></div>
+                <input type="file" id="birth_certificate" name="birth_certificate" accept=".jpg,.jpeg,.png,.pdf" onchange="handleFileSelect(this, 'preview_birth', 'box_birth')">
+                <button type="button" class="btn-upload-trigger" onclick="document.getElementById('birth_certificate').click()">Choose File</button>
+              </div>
+            </div>
+
+            <!-- Document 3: Child Aadhaar Card -->
+            <div class="doc-upload-box" id="box_aadhaar">
+              <div>
+                <div class="doc-icon">🪪</div>
+                <h3>3. Child Aadhaar Card</h3>
+                <p>Verifies national identity, Care-of (S/O) & residential address</p>
+              </div>
+              <div>
+                <div id="preview_aadhaar" class="file-name-preview" style="display:none;"></div>
+                <input type="file" id="aadhaar_card" name="aadhaar_card" accept=".jpg,.jpeg,.png,.pdf" onchange="handleFileSelect(this, 'preview_aadhaar', 'box_aadhaar')">
+                <button type="button" class="btn-upload-trigger" onclick="document.getElementById('aadhaar_card').click()">Choose File</button>
+              </div>
+            </div>
+
+            <!-- Document 4: Family Card / Ration Card (Tamil) -->
+            <div class="doc-upload-box" id="box_family">
+              <div>
+                <div class="doc-icon">🌾</div>
+                <h3>4. Family Card (தமிழ்)</h3>
+                <p>Verifies household relationship & family roster in Tamil</p>
+              </div>
+              <div>
+                <div id="preview_family" class="file-name-preview" style="display:none;"></div>
+                <input type="file" id="family_card" name="family_card" accept=".jpg,.jpeg,.png,.pdf" onchange="handleFileSelect(this, 'preview_family', 'box_family')">
+                <button type="button" class="btn-upload-trigger" onclick="document.getElementById('family_card').click()">Choose File</button>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Auto-Fill Trigger Bar -->
+          <div class="actions-row" style="background: var(--neutral-50); padding: 1rem; border-radius: var(--radius-sm); margin-top: 1.25rem;">
+            <div>
+              <span id="autofillStatusMsg" style="font-size: 0.88rem; font-weight: 600; color: var(--primary);">
+                Please upload the 4 documents above or click "Demo: Load Sample Documents & Auto-Fill".
+              </span>
+            </div>
+            <button type="button" class="btn btn-accent btn-lg" id="btnScanAutofill" onclick="triggerAutofill()">
+              <span>⚡ Scan Documents & Auto-Fill Form via OCR</span>
+            </button>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- STEP 2: AUTO-FILLED APPLICANT & FAMILY PARTICULARS (SECOND) -->
+      <section class="card" id="particularsSection">
+        <div class="card-header">
+          <h2><span>👤</span> Step 2: Auto-Filled Applicant & Family Particulars</h2>
+          <div id="autofillBadge">
+            <span class="badge badge-neutral">Awaiting Document Scan</span>
+          </div>
+        </div>
+        <div class="card-body">
+
+          <!-- Hidden inputs for active session tracking -->
+          <input type="hidden" id="session_id" name="session_id" value="">
+          <input type="hidden" id="is_sample" name="is_sample" value="false">
           
-          <div class="sub-section-title"><span>👶</span> Child / Applicant Details</div>
+          <div class="sub-section-title">
+            <span>👶</span> Child / Applicant Details
+            <span class="badge badge-info" id="badge_child_src" style="font-size: 0.7rem; font-weight: 500; display: none;">Extracted from Aadhaar & Birth Cert</span>
+          </div>
+
           <div class="form-grid">
             <div class="form-group">
               <label for="child_name">Child Full Name (English) <span class="required">*</span></label>
@@ -92,7 +193,11 @@
           </div>
 
           <!-- Community Inheritance Section -->
-          <div class="sub-section-title"><span>📜</span> Statutory Community Inheritance & Parent Details</div>
+          <div class="sub-section-title">
+            <span>📜</span> Statutory Community Inheritance & Parent Details
+            <span class="badge badge-info" id="badge_comm_src" style="font-size: 0.7rem; font-weight: 500; display: none;">Extracted from Parent Community Cert</span>
+          </div>
+
           <div class="inheritance-rule-box">
             ⚖️ <strong>Tamil Nadu Community Inheritance Rule:</strong> By statutory government rules, the child inherits the community of the <strong>father</strong>. A <strong>mother's community certificate</strong> is admissible as an alternative supporting document subject to field inquiry by the Revenue Inspector (RI) / Tahsildar. At least one parent's community certificate must be verified.
           </div>
@@ -102,11 +207,11 @@
               <label>Primary Parent Certificate Submitted for Inheritance Verification <span class="required">*</span></label>
               <div class="radio-group">
                 <label class="radio-item">
-                  <input type="radio" name="parent_certificate_submitted" value="mother" checked>
+                  <input type="radio" name="parent_certificate_submitted" id="radio_parent_mother" value="mother" checked>
                   <strong>Mother's Certificate</strong> (Supporting Alternative)
                 </label>
                 <label class="radio-item">
-                  <input type="radio" name="parent_certificate_submitted" value="father">
+                  <input type="radio" name="parent_certificate_submitted" id="radio_parent_father" value="father">
                   <strong>Father's Certificate</strong> (Direct Statutory Lineage)
                 </label>
               </div>
@@ -146,7 +251,11 @@
           </div>
 
           <!-- Residential Address -->
-          <div class="sub-section-title"><span>🏠</span> Residential Particulars</div>
+          <div class="sub-section-title">
+            <span>🏠</span> Residential Particulars
+            <span class="badge badge-info" id="badge_addr_src" style="font-size: 0.7rem; font-weight: 500; display: none;">Extracted from Aadhaar & Family Card</span>
+          </div>
+
           <div class="form-grid">
             <div class="form-group">
               <label for="door_no">Door / Plot No.</label>
@@ -179,81 +288,7 @@
             </div>
           </div>
 
-        </div>
-      </section>
-
-      <!-- SECTION 2: 4 MANDATORY SUPPORTING DOCUMENTS -->
-      <section class="card">
-        <div class="card-header">
-          <h2><span>📂</span> 2. Mandatory Supporting Documents (4 Documents Required)</h2>
-          <span class="badge badge-warning">4 Documents Mandatory</span>
-        </div>
-        <div class="card-body">
-          <p style="font-size: 0.88rem; color: var(--neutral-600); margin-bottom: 1.25rem;">
-            Upload scanned copies or official digital PDFs for independent OCR extraction and cross-verification. Supported: <strong>JPEG, PNG, PDF</strong>.
-          </p>
-
-          <div class="upload-grid">
-
-            <!-- Document 1: Parent Community Certificate -->
-            <div class="doc-upload-box" id="box_parent_community">
-              <div>
-                <div class="doc-icon">🏛️</div>
-                <h3>1. Parent Community Certificate</h3>
-                <p>Verifies parent community & statutory eligibility (Father / Mother certificate)</p>
-              </div>
-              <div>
-                <div id="preview_parent_community" class="file-name-preview" style="display:none;"></div>
-                <input type="file" id="parent_community_certificate" name="parent_community_certificate" accept=".jpg,.jpeg,.png,.pdf" onchange="handleFileSelect(this, 'preview_parent_community', 'box_parent_community')">
-                <button type="button" class="btn-upload-trigger" onclick="document.getElementById('parent_community_certificate').click()">Choose File</button>
-              </div>
-            </div>
-
-            <!-- Document 2: Child Birth Certificate -->
-            <div class="doc-upload-box" id="box_birth">
-              <div>
-                <div class="doc-icon">👶</div>
-                <h3>2. Child Birth Certificate</h3>
-                <p>Verifies child name, DOB & municipal registration particulars</p>
-              </div>
-              <div>
-                <div id="preview_birth" class="file-name-preview" style="display:none;"></div>
-                <input type="file" id="birth_certificate" name="birth_certificate" accept=".jpg,.jpeg,.png,.pdf" onchange="handleFileSelect(this, 'preview_birth', 'box_birth')">
-                <button type="button" class="btn-upload-trigger" onclick="document.getElementById('birth_certificate').click()">Choose File</button>
-              </div>
-            </div>
-
-            <!-- Document 3: Child Aadhaar Card -->
-            <div class="doc-upload-box" id="box_aadhaar">
-              <div>
-                <div class="doc-icon">🪪</div>
-                <h3>3. Child Aadhaar Card</h3>
-                <p>Verifies national identity, guardian link & residential address</p>
-              </div>
-              <div>
-                <div id="preview_aadhaar" class="file-name-preview" style="display:none;"></div>
-                <input type="file" id="aadhaar_card" name="aadhaar_card" accept=".jpg,.jpeg,.png,.pdf" onchange="handleFileSelect(this, 'preview_aadhaar', 'box_aadhaar')">
-                <button type="button" class="btn-upload-trigger" onclick="document.getElementById('aadhaar_card').click()">Choose File</button>
-              </div>
-            </div>
-
-            <!-- Document 4: Family Card / Ration Card (Tamil) -->
-            <div class="doc-upload-box" id="box_family">
-              <div>
-                <div class="doc-icon">🌾</div>
-                <h3>4. Family Card (தமிழ்)</h3>
-                <p>Verifies household relationship & family roster in Tamil</p>
-              </div>
-              <div>
-                <div id="preview_family" class="file-name-preview" style="display:none;"></div>
-                <input type="file" id="family_card" name="family_card" accept=".jpg,.jpeg,.png,.pdf" onchange="handleFileSelect(this, 'preview_family', 'box_family')">
-                <button type="button" class="btn-upload-trigger" onclick="document.getElementById('family_card').click()">Choose File</button>
-              </div>
-            </div>
-
-          </div>
-
-          <!-- Action Row -->
+          <!-- Step 3 Verification Trigger Row -->
           <div class="actions-row">
             <div>
               <span id="validationWarning" style="color: var(--danger); font-size: 0.85rem; font-weight: 600;"></span>
@@ -271,7 +306,7 @@
     <!-- SECTION 3: 8-STAGE VERIFICATION PIPELINE TRACKER -->
     <section class="card" id="pipelineSection" style="display: none;">
       <div class="card-header">
-        <h2><span>🔍</span> 3. Document Verification Pipeline (8 Stages)</h2>
+        <h2><span>🔍</span> Step 3: Document Verification Pipeline (8 Stages)</h2>
         <div id="pipelineOverallBadge">
           <span class="badge badge-info">Processing</span>
         </div>
@@ -289,7 +324,7 @@
 
         <!-- SECTION 4: CROSS-DOCUMENT CONSISTENCY MATRIX -->
         <div id="matrixContainer" style="display: none; margin-top: 2rem;">
-          <div class="sub-section-title"><span>📊</span> 4. Cross-Document Consistency Matrix</div>
+          <div class="sub-section-title"><span>📊</span> Cross-Document Consistency Matrix</div>
           <div class="table-responsive">
             <table class="match-table">
               <thead>

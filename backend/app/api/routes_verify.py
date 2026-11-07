@@ -10,6 +10,7 @@ from app.core.logging import logger
 from app.schemas.applicant import ApplicantDetails
 from app.schemas.verification import VerificationPipelineReport
 from app.verification.pipeline import run_verification_pipeline
+from app.ocr.autofill_extractor import extract_autofill_details
 
 router = APIRouter(prefix="/verify", tags=["Verification"])
 
@@ -45,6 +46,69 @@ async def get_sample_info():
         "sample_docs_available": sample_files,
         "all_sample_docs_ready": all(sample_files.values())
     }
+
+@router.post("/autofill-sample")
+async def autofill_sample():
+    """
+    Extracts all applicant particulars automatically from the official sample documents using OCR.
+    """
+    birth_path = settings.SAMPLE_DOCS_DIR / "child_birth.jpeg"
+    aadhaar_path = settings.SAMPLE_DOCS_DIR / "child_aadhar.pdf"
+    comm_path = settings.SAMPLE_DOCS_DIR / "mother_community.jpeg"
+    family_path = settings.SAMPLE_DOCS_DIR / "ration_card.pdf"
+
+    for p in [birth_path, aadhaar_path, comm_path, family_path]:
+        if not p.exists():
+            raise HTTPException(status_code=404, detail=f"Sample document not found: {p.name}")
+
+    data = extract_autofill_details(
+        birth_cert_path=birth_path,
+        aadhaar_path=aadhaar_path,
+        community_cert_path=comm_path,
+        family_card_path=family_path
+    )
+    data["is_sample"] = True
+    return data
+
+@router.post("/autofill")
+async def autofill_from_documents(
+    birth_certificate: UploadFile = File(...),
+    aadhaar_card: UploadFile = File(...),
+    parent_community_certificate: UploadFile = File(...),
+    family_card: UploadFile = File(...)
+):
+    """
+    Uploads supporting documents beforehand and automatically extracts and populates
+    all application form fields using bilingual OCR.
+    """
+    session_id = f"autofill_{uuid.uuid4().hex[:8]}"
+    session_upload_dir = settings.UPLOAD_DIR / session_id
+    session_upload_dir.mkdir(parents=True, exist_ok=True)
+
+    def save_file(upload_file: UploadFile, filename: str) -> Path:
+        dest_path = session_upload_dir / filename
+        with open(dest_path, "wb") as buffer:
+            shutil.copyfileobj(upload_file.file, buffer)
+        return dest_path
+
+    birth_ext = Path(birth_certificate.filename or "birth.jpeg").suffix or ".jpeg"
+    aadhaar_ext = Path(aadhaar_card.filename or "aadhaar.pdf").suffix or ".pdf"
+    comm_ext = Path(parent_community_certificate.filename or "community.jpeg").suffix or ".jpeg"
+    family_ext = Path(family_card.filename or "family.pdf").suffix or ".pdf"
+
+    saved_birth = save_file(birth_certificate, f"birth_certificate{birth_ext}")
+    saved_aadhaar = save_file(aadhaar_card, f"child_aadhaar{aadhaar_ext}")
+    saved_comm = save_file(parent_community_certificate, f"parent_community{comm_ext}")
+    saved_family = save_file(family_card, f"family_card{family_ext}")
+
+    data = extract_autofill_details(
+        birth_cert_path=saved_birth,
+        aadhaar_path=saved_aadhaar,
+        community_cert_path=saved_comm,
+        family_card_path=saved_family
+    )
+    data["session_id"] = session_id
+    return data
 
 @router.post("/sample", response_model=VerificationPipelineReport)
 async def verify_sample_pipeline():
@@ -107,18 +171,17 @@ async def verify_application(
     taluk: Optional[str] = Form(None),
     district: Optional[str] = Form(None),
     pincode: Optional[str] = Form(None),
-    birth_certificate: UploadFile = File(...),
-    aadhaar_card: UploadFile = File(...),
-    parent_community_certificate: UploadFile = File(...),
-    family_card: UploadFile = File(...)
+    session_id: Optional[str] = Form(None),
+    is_sample: Optional[bool] = Form(False),
+    birth_certificate: Optional[UploadFile] = File(None),
+    aadhaar_card: Optional[UploadFile] = File(None),
+    parent_community_certificate: Optional[UploadFile] = File(None),
+    family_card: Optional[UploadFile] = File(None)
 ):
     """
     Submits application details and 4 mandatory supporting documents to execute the 8-stage verification pipeline.
+    Reuses existing session files if uploaded beforehand during autofill.
     """
-    session_id = uuid.uuid4().hex[:8]
-    session_upload_dir = settings.UPLOAD_DIR / session_id
-    session_upload_dir.mkdir(parents=True, exist_ok=True)
-
     applicant = ApplicantDetails(
         child_name=child_name.strip(),
         child_gender=child_gender.strip(),
@@ -138,9 +201,56 @@ async def verify_application(
         pincode=pincode.strip() if pincode else None
     )
 
-    # Save uploaded files safely
+    # 1. Check if sample mode was requested
+    if is_sample:
+        birth_path = settings.SAMPLE_DOCS_DIR / "child_birth.jpeg"
+        aadhaar_path = settings.SAMPLE_DOCS_DIR / "child_aadhar.pdf"
+        comm_path = settings.SAMPLE_DOCS_DIR / "mother_community.jpeg"
+        family_path = settings.SAMPLE_DOCS_DIR / "ration_card.pdf"
+        return run_verification_pipeline(
+            applicant=applicant,
+            birth_cert_path=birth_path,
+            aadhaar_path=aadhaar_path,
+            community_cert_path=comm_path,
+            family_card_path=family_path
+        )
+
+    # 2. Check if reusing an active autofill session
+    session_dir = None
+    if session_id:
+        cand_dir = settings.UPLOAD_DIR / session_id
+        if cand_dir.is_dir():
+            session_dir = cand_dir
+
+    if session_dir:
+        # Find files in session directory
+        birth_candidates = list(session_dir.glob("birth_certificate.*"))
+        aadhaar_candidates = list(session_dir.glob("child_aadhaar.*"))
+        comm_candidates = list(session_dir.glob("parent_community.*"))
+        family_candidates = list(session_dir.glob("family_card.*"))
+
+        if birth_candidates and aadhaar_candidates and comm_candidates and family_candidates:
+            return run_verification_pipeline(
+                applicant=applicant,
+                birth_cert_path=birth_candidates[0],
+                aadhaar_path=aadhaar_candidates[0],
+                community_cert_path=comm_candidates[0],
+                family_card_path=family_candidates[0]
+            )
+
+    # 3. Handle fresh file upload
+    if not birth_certificate or not aadhaar_card or not parent_community_certificate or not family_card:
+        raise HTTPException(
+            status_code=400,
+            detail="All 4 supporting documents must be provided or scanned beforehand."
+        )
+
+    new_session_id = uuid.uuid4().hex[:8]
+    new_dir = settings.UPLOAD_DIR / new_session_id
+    new_dir.mkdir(parents=True, exist_ok=True)
+
     def save_file(upload_file: UploadFile, filename: str) -> Path:
-        dest_path = session_upload_dir / filename
+        dest_path = new_dir / filename
         with open(dest_path, "wb") as buffer:
             shutil.copyfileobj(upload_file.file, buffer)
         return dest_path
@@ -155,16 +265,10 @@ async def verify_application(
     saved_comm = save_file(parent_community_certificate, f"parent_community{comm_ext}")
     saved_family = save_file(family_card, f"family_card{family_ext}")
 
-    logger.info(f"Executing verification pipeline for applicant: {applicant.child_name}")
-    try:
-        report = run_verification_pipeline(
-            applicant=applicant,
-            birth_cert_path=saved_birth,
-            aadhaar_path=saved_aadhaar,
-            community_cert_path=saved_comm,
-            family_card_path=saved_family
-        )
-        return report
-    except Exception as e:
-        logger.error(f"Pipeline execution error: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Verification pipeline failed: {str(e)}")
+    return run_verification_pipeline(
+        applicant=applicant,
+        birth_cert_path=saved_birth,
+        aadhaar_path=saved_aadhaar,
+        community_cert_path=saved_comm,
+        family_card_path=saved_family
+    )

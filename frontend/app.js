@@ -1,48 +1,169 @@
 // Community Certificate Application Verification System - Frontend Orchestrator
 
 let isSampleMode = false;
+let currentSessionId = "";
 
-// Preload official sample data for testing and staff demo
-async function loadSampleData() {
+// Preload official sample documents and auto-fill form particulars using OCR
+async function handleLoadSampleAndAutofill() {
+  const btn = document.getElementById("btnLoadSample");
+  const origText = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = `<span class="spinner" style="width:14px;height:14px;"></span> Loading & Scanning...`;
+
   try {
-    const res = await fetch("/api/verify/sample-info");
-    if (!res.ok) throw new Error("Could not fetch sample info");
-    const data = await res.json();
-    
-    const app = data.sample_applicant;
-    document.getElementById("child_name").value = app.child_name || "";
-    document.getElementById("child_gender").value = app.child_gender || "Male";
-    document.getElementById("child_dob").value = app.child_dob || "";
-    document.getElementById("child_community").value = app.child_community || "MBC";
-    document.getElementById("child_sub_caste").value = app.child_sub_caste || "";
-    document.getElementById("father_name").value = app.father_name || "";
-    document.getElementById("father_community").value = app.father_community || "MBC";
-    document.getElementById("mother_name").value = app.mother_name || "";
-    document.getElementById("mother_community").value = app.mother_community || "MBC";
-    
-    const radioParent = document.querySelector(`input[name="parent_certificate_submitted"][value="${app.parent_certificate_submitted}"]`);
-    if (radioParent) radioParent.checked = true;
-
-    document.getElementById("door_no").value = app.door_no || "";
-    document.getElementById("street").value = app.street || "";
-    document.getElementById("village_town").value = app.village_town || "";
-    document.getElementById("taluk").value = app.taluk || "";
-    document.getElementById("district").value = app.district || "";
-    document.getElementById("pincode").value = app.pincode || "";
-
-    // Highlight sample files loaded
+    // 1. Populate upload box previews
     setPreviewText("preview_parent_community", "box_parent_community", "mother_community.jpeg (Sample MBC Certificate)");
     setPreviewText("preview_birth", "box_birth", "child_birth.jpeg (Sample Municipal Record)");
     setPreviewText("preview_aadhaar", "box_aadhaar", "child_aadhar.pdf (Sample Official e-Aadhaar)");
     setPreviewText("preview_family", "box_family", "ration_card.pdf (Sample Tamil Family Card)");
 
     isSampleMode = true;
-    document.getElementById("validationWarning").innerText = "Official sample documents & particulars loaded. Ready to execute pipeline.";
-    document.getElementById("validationWarning").style.color = "var(--success)";
+    document.getElementById("is_sample").value = "true";
+    document.getElementById("session_id").value = "";
+
+    // 2. Fetch OCR extracted particulars from backend
+    const res = await fetch("/api/verify/autofill-sample", { method: "POST" });
+    if (!res.ok) throw new Error("Could not extract details from sample documents");
+    const data = await res.json();
+
+    // 3. Fill form fields
+    populateFormFields(data);
+
+    document.getElementById("autofillStatusMsg").innerHTML = `
+      <span style="color: var(--success);">✓ 4 official sample documents scanned. Form particulars auto-filled below.</span>
+    `;
+
+    // Scroll smoothly to Step 2
+    document.getElementById("particularsSection").scrollIntoView({ behavior: "smooth" });
+
   } catch (err) {
-    console.error("Error loading sample data:", err);
-    alert("Could not load sample data from server. Ensure backend is running.");
+    console.error("Error in sample autofill:", err);
+    // Fallback to sample info endpoint
+    await fallbackSampleFill();
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = origText;
   }
+}
+
+async function fallbackSampleFill() {
+  try {
+    const res = await fetch("/api/verify/sample-info");
+    const data = await res.json();
+    populateFormFields(data.sample_applicant);
+    document.getElementById("autofillStatusMsg").innerHTML = `
+      <span style="color: var(--success);">✓ Sample particulars loaded. Ready for review.</span>
+    `;
+    document.getElementById("particularsSection").scrollIntoView({ behavior: "smooth" });
+  } catch (e) {
+    alert("Could not connect to backend server. Make sure it is running on port 8000.");
+  }
+}
+
+// User-triggered document scan & autofill
+async function triggerAutofill() {
+  const statusEl = document.getElementById("autofillStatusMsg");
+  const btn = document.getElementById("btnScanAutofill");
+
+  if (isSampleMode) {
+    return handleLoadSampleAndAutofill();
+  }
+
+  const parentCert = document.getElementById("parent_community_certificate").files[0];
+  const birthCert = document.getElementById("birth_certificate").files[0];
+  const aadhaar = document.getElementById("aadhaar_card").files[0];
+  const family = document.getElementById("family_card").files[0];
+
+  if (!parentCert || !birthCert || !aadhaar || !family) {
+    statusEl.innerHTML = `
+      <span style="color: var(--danger);">⚠️ All 4 documents must be chosen beforehand. Alternatively, click "Demo: Load Sample Documents & Auto-Fill".</span>
+    `;
+    return;
+  }
+
+  const origText = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = `<span class="spinner" style="width:16px;height:16px;"></span> Scanning Documents via OCR...`;
+  statusEl.innerHTML = `<span style="color: var(--accent);"><span class="spinner spinner-primary" style="width:12px;height:12px;"></span> Running bilingual OCR extraction on uploaded documents... Please wait.</span>`;
+
+  try {
+    const formData = new FormData();
+    formData.append("parent_community_certificate", parentCert);
+    formData.append("birth_certificate", birthCert);
+    formData.append("aadhaar_card", aadhaar);
+    formData.append("family_card", family);
+
+    const res = await fetch("/api/verify/autofill", {
+      method: "POST",
+      body: formData
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || "Failed to scan documents");
+    }
+
+    const data = await res.json();
+    currentSessionId = data.session_id || "";
+    document.getElementById("session_id").value = currentSessionId;
+    document.getElementById("is_sample").value = "false";
+
+    populateFormFields(data);
+
+    statusEl.innerHTML = `
+      <span style="color: var(--success);">✓ Documents scanned successfully. Form particulars auto-filled below!</span>
+    `;
+
+    document.getElementById("particularsSection").scrollIntoView({ behavior: "smooth" });
+
+  } catch (err) {
+    console.error("Autofill error:", err);
+    statusEl.innerHTML = `<span style="color: var(--danger);">❌ OCR Scan Error: ${err.message}</span>`;
+    alert(`Could not extract from documents: ${err.message}`);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = origText;
+  }
+}
+
+function populateFormFields(data) {
+  if (!data) return;
+
+  // Child details
+  document.getElementById("child_name").value = data.child_name || "";
+  document.getElementById("child_gender").value = data.child_gender || "Male";
+  document.getElementById("child_dob").value = data.child_dob || "";
+  document.getElementById("child_community").value = data.child_community || "MBC";
+  document.getElementById("child_sub_caste").value = data.child_sub_caste || "Hindu Vanniakula Kshatriya";
+
+  // Parent details
+  document.getElementById("father_name").value = data.father_name || "";
+  document.getElementById("father_community").value = data.father_community || "MBC";
+  document.getElementById("mother_name").value = data.mother_name || "";
+  document.getElementById("mother_community").value = data.mother_community || "MBC";
+
+  // Inheritance radio
+  const pType = data.parent_certificate_submitted || "mother";
+  const radio = document.querySelector(`input[name="parent_certificate_submitted"][value="${pType}"]`);
+  if (radio) radio.checked = true;
+
+  // Address
+  document.getElementById("door_no").value = data.door_no || "";
+  document.getElementById("street").value = data.street || "";
+  document.getElementById("village_town").value = data.village_town || "";
+  document.getElementById("taluk").value = data.taluk || "";
+  document.getElementById("district").value = data.district || "";
+  document.getElementById("pincode").value = data.pincode || "";
+
+  // Visual badges indicating auto-fill success
+  document.getElementById("autofillBadge").innerHTML = `
+    <span class="badge badge-success">✨ Auto-Filled via OCR</span>
+  `;
+  document.getElementById("badge_child_src").style.display = "inline-flex";
+  document.getElementById("badge_comm_src").style.display = "inline-flex";
+  document.getElementById("badge_addr_src").style.display = "inline-flex";
+
+  document.getElementById("validationWarning").innerText = "";
 }
 
 function setPreviewText(previewId, boxId, text) {
@@ -57,11 +178,14 @@ function setPreviewText(previewId, boxId, text) {
 
 function handleFileSelect(input, previewId, boxId) {
   isSampleMode = false;
+  document.getElementById("is_sample").value = "false";
   const file = input.files[0];
   if (file) {
     const sizeKB = (file.size / 1024).toFixed(1);
     setPreviewText(previewId, boxId, `${file.name} (${sizeKB} KB)`);
-    document.getElementById("validationWarning").innerText = "";
+    document.getElementById("autofillStatusMsg").innerHTML = `
+      <span style="color: var(--primary);">Document selected: <strong>${file.name}</strong>. Click "Scan Documents & Auto-Fill Form" when all 4 files are chosen.</span>
+    `;
   }
 }
 
@@ -148,15 +272,26 @@ async function handleFormSubmit(event) {
   const warningEl = document.getElementById("validationWarning");
   warningEl.innerText = "";
 
-  // Check mandatory file upload if not in sample demo mode
-  if (!isSampleMode) {
+  // Check mandatory particulars
+  const childName = document.getElementById("child_name").value.trim();
+  const dob = document.getElementById("child_dob").value.trim();
+  if (!childName || !dob) {
+    warningEl.innerText = "Please complete Step 1 (Scan Documents) to auto-fill particulars before verifying.";
+    return;
+  }
+
+  // Check files if not sample mode and no session_id
+  const sessionId = document.getElementById("session_id").value;
+  const isSample = document.getElementById("is_sample").value === "true";
+
+  if (!isSample && !sessionId) {
     const parentCert = document.getElementById("parent_community_certificate").files[0];
     const birthCert = document.getElementById("birth_certificate").files[0];
     const aadhaar = document.getElementById("aadhaar_card").files[0];
     const family = document.getElementById("family_card").files[0];
 
     if (!parentCert || !birthCert || !aadhaar || !family) {
-      warningEl.innerText = "All 4 supporting documents are mandatory. Please upload all files or click 'Demo: Load Official Sample Data'.";
+      warningEl.innerText = "All 4 supporting documents are mandatory. Please scan them in Step 1 first.";
       return;
     }
   }
@@ -164,7 +299,7 @@ async function handleFormSubmit(event) {
   // Setup UI for processing
   const btnSubmit = document.getElementById("btnSubmitVerify");
   btnSubmit.disabled = true;
-  btnSubmit.innerHTML = `<span class="spinner"></span> Processing 8-Stage Pipeline...`;
+  btnSubmit.innerHTML = `<span class="spinner"></span> Executing 8-Stage Pipeline...`;
 
   const pipelineSection = document.getElementById("pipelineSection");
   pipelineSection.style.display = "block";
@@ -174,23 +309,23 @@ async function handleFormSubmit(event) {
   document.getElementById("matrixContainer").style.display = "none";
   document.getElementById("outcomeContainer").style.display = "none";
   document.getElementById("pipelineStatusBanner").innerHTML = `
-    <span class="spinner spinner-primary"></span> Executing bilingual OCR extraction and multi-stage verification... Please wait (15-30s on CPU).
+    <span class="spinner spinner-primary"></span> Executing 8-stage verification pipeline and cross-matching... Please wait.
   `;
 
-  // Simulate active stage transitions for user visual feedback while request completes
+  // Simulate active stage transitions for user visual feedback
   let simulatedStage = 1;
   updateStageUI("stage_1", "PROCESSING", "Validating applicant details and statutory rules...");
   const simInterval = setInterval(() => {
     simulatedStage++;
     if (simulatedStage <= 5) {
       updateStageUI(`stage_${simulatedStage - 1}`, "VERIFIED", "Stage completed.");
-      updateStageUI(`stage_${simulatedStage}`, "PROCESSING", `Extracting and analyzing document ${simulatedStage}...`);
+      updateStageUI(`stage_${simulatedStage}`, "PROCESSING", `Extracting and cross-matching document ${simulatedStage}...`);
     }
-  }, 4000);
+  }, 3500);
 
   try {
     let response;
-    if (isSampleMode) {
+    if (isSample) {
       response = await fetch("/api/verify/sample", { method: "POST" });
     } else {
       const form = document.getElementById("verificationForm");
@@ -227,7 +362,6 @@ function renderPipelineResults(report) {
   // Update stage statuses with official backend report
   report.stages.forEach(st => {
     updateStageUI(st.stage_id, st.status, st.message, st.flags || []);
-    // Auto-open detail if there are flags
     if (st.flags && st.flags.length > 0) {
       const detail = document.getElementById(`detail_${st.stage_id}`);
       if (detail) detail.style.display = "block";
