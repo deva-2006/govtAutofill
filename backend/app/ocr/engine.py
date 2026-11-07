@@ -41,7 +41,7 @@ class OCREngine:
         self._reader = easyocr.Reader(['ta', 'en'], gpu=False, verbose=False)
         logger.info("EasyOCR Engine initialized successfully.")
 
-    def preprocess_image(self, img: np.ndarray, max_dim: int = 750) -> np.ndarray:
+    def preprocess_image(self, img: np.ndarray, max_dim: int = 1100) -> np.ndarray:
         """Resizes image if too large while maintaining aspect ratio and enhances contrast."""
         h, w = img.shape[:2]
         if max(h, w) > max_dim:
@@ -112,7 +112,7 @@ class OCREngine:
 
         results = []
         for idx, img in enumerate(images):
-            prep = self.preprocess_image(img, max_dim=750)
+            prep = self.preprocess_image(img, max_dim=1100)
             raw_ocr = self._reader.readtext(prep, detail=1, batch_size=4)
             for item in raw_ocr:
                 text = item[1].strip()
