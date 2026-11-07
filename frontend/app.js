@@ -3,44 +3,70 @@
 let isSampleMode = false;
 let currentSessionId = "";
 
-// Preload official sample documents and auto-fill form particulars using OCR
+// Preload official sample documents and auto-fill form particulars using real OCR
 async function handleLoadSampleAndAutofill() {
   const btn = document.getElementById("btnLoadSample");
   const origText = btn.innerHTML;
+  const statusEl = document.getElementById("autofillStatusMsg");
   btn.disabled = true;
-  btn.innerHTML = `<span class="spinner" style="width:14px;height:14px;"></span> Loading & Scanning...`;
+
+  // 1. Populate upload box previews
+  setPreviewText("preview_parent_community", "box_parent_community", "mother_community.jpeg (Sample MBC Certificate)");
+  setPreviewText("preview_birth", "box_birth", "child_birth.jpeg (Sample Municipal Record)");
+  setPreviewText("preview_aadhaar", "box_aadhaar", "child_aadhar.pdf (Sample Official e-Aadhaar)");
+  setPreviewText("preview_family", "box_family", "ration_card.pdf (Sample Tamil Family Card)");
+
+  isSampleMode = true;
+  document.getElementById("is_sample").value = "true";
+  document.getElementById("session_id").value = "";
+
+  let seconds = 0;
+  btn.innerHTML = `<span class="spinner" style="width:14px;height:14px;"></span> Running Live OCR (0s)...`;
+  statusEl.innerHTML = `<span style="color: var(--accent);"><span class="spinner spinner-primary" style="width:12px;height:12px;"></span> Initializing live bilingual OCR on sample documents...</span>`;
+
+  const timer = setInterval(() => {
+    seconds++;
+    btn.innerHTML = `<span class="spinner" style="width:14px;height:14px;"></span> Running Live OCR (${seconds}s)...`;
+    if (seconds === 2) {
+      statusEl.innerHTML = `<span style="color: var(--accent);"><span class="spinner spinner-primary" style="width:12px;height:12px;"></span> [1/4] Extracting Municipal Birth Record & DOB (child_birth.jpeg)...</span>`;
+    } else if (seconds === 6) {
+      statusEl.innerHTML = `<span style="color: var(--accent);"><span class="spinner spinner-primary" style="width:12px;height:12px;"></span> [2/4] Parsing Child Aadhaar Identity & DOB (child_aadhar.pdf)...</span>`;
+    } else if (seconds === 12) {
+      statusEl.innerHTML = `<span style="color: var(--accent);"><span class="spinner spinner-primary" style="width:12px;height:12px;"></span> [3/4] Scrutinizing Parent Community Certificate & Caste (mother_community.jpeg)...</span>`;
+    } else if (seconds === 18) {
+      statusEl.innerHTML = `<span style="color: var(--accent);"><span class="spinner spinner-primary" style="width:12px;height:12px;"></span> [4/4] Verifying Tamil Smart Family Card & Roster (ration_card.pdf)...</span>`;
+    }
+  }, 1000);
 
   try {
-    // 1. Populate upload box previews
-    setPreviewText("preview_parent_community", "box_parent_community", "mother_community.jpeg (Sample MBC Certificate)");
-    setPreviewText("preview_birth", "box_birth", "child_birth.jpeg (Sample Municipal Record)");
-    setPreviewText("preview_aadhaar", "box_aadhaar", "child_aadhar.pdf (Sample Official e-Aadhaar)");
-    setPreviewText("preview_family", "box_family", "ration_card.pdf (Sample Tamil Family Card)");
-
-    isSampleMode = true;
-    document.getElementById("is_sample").value = "true";
-    document.getElementById("session_id").value = "";
-
-    // 2. Fetch OCR extracted particulars from backend
+    // Fetch live OCR extracted particulars from backend
     const res = await fetch("/api/verify/autofill-sample", { method: "POST" });
-    if (!res.ok) throw new Error("Could not extract details from sample documents");
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || "Could not extract details from sample documents");
+    }
     const data = await res.json();
 
-    // 3. Fill form fields
+    clearInterval(timer);
     populateFormFields(data);
 
-    document.getElementById("autofillStatusMsg").innerHTML = `
-      <span style="color: var(--success);">✓ 4 official sample documents scanned. Form particulars auto-filled below.</span>
+    statusEl.innerHTML = `
+      <span style="color: var(--success); font-weight: 700;">✓ 4 official sample documents scanned in live OCR (${seconds}s)! Form particulars auto-filled below.</span>
     `;
 
     // Scroll smoothly to Step 2
-    document.getElementById("particularsSection").scrollIntoView({ behavior: "smooth" });
+    setTimeout(() => {
+      document.getElementById("particularsSection").scrollIntoView({ behavior: "smooth" });
+    }, 250);
 
   } catch (err) {
+    clearInterval(timer);
     console.error("Error in sample autofill:", err);
-    // Fallback to sample info endpoint
+    statusEl.innerHTML = `<span style="color: var(--danger);">❌ OCR Scan Error: ${err.message}</span>`;
+    // Fallback to sample info endpoint if server OCR had an error
     await fallbackSampleFill();
   } finally {
+    clearInterval(timer);
     btn.disabled = false;
     btn.innerHTML = origText;
   }
@@ -60,14 +86,10 @@ async function fallbackSampleFill() {
   }
 }
 
-// User-triggered document scan & autofill
+// User-triggered document scan & autofill (Always uses actual uploaded files)
 async function triggerAutofill() {
   const statusEl = document.getElementById("autofillStatusMsg");
   const btn = document.getElementById("btnScanAutofill");
-
-  if (isSampleMode) {
-    return handleLoadSampleAndAutofill();
-  }
 
   const parentCert = document.getElementById("parent_community_certificate").files[0];
   const birthCert = document.getElementById("birth_certificate").files[0];
@@ -84,60 +106,49 @@ async function triggerAutofill() {
   const origText = btn.innerHTML;
   btn.disabled = true;
 
-  // Check if uploaded files match the official sample documents for instant processing
-  const isSampleDocs = isSampleMode || (
-    (parentCert?.name?.toLowerCase().includes("mother") || parentCert?.name?.toLowerCase().includes("community")) &&
-    (birthCert?.name?.toLowerCase().includes("birth")) &&
-    (aadhaar?.name?.toLowerCase().includes("aadhar") || aadhaar?.name?.toLowerCase().includes("aadhaar")) &&
-    (family?.name?.toLowerCase().includes("ration") || family?.name?.toLowerCase().includes("family"))
-  );
+  // Mark as real user upload mode (never sample bypass)
+  isSampleMode = false;
+  document.getElementById("is_sample").value = "false";
 
   let seconds = 0;
   btn.innerHTML = `<span class="spinner" style="width:14px;height:14px;"></span> Scanning Documents (0s)...`;
+  statusEl.innerHTML = `<span style="color: var(--accent);"><span class="spinner spinner-primary" style="width:12px;height:12px;"></span> Initializing live bilingual OCR scan on uploaded documents...</span>`;
+
   const timer = setInterval(() => {
     seconds++;
     btn.innerHTML = `<span class="spinner" style="width:14px;height:14px;"></span> Scanning Documents (${seconds}s)...`;
-    if (seconds === 3) {
-      statusEl.innerHTML = `<span style="color: var(--accent);"><span class="spinner spinner-primary" style="width:12px;height:12px;"></span> [1/4] Extracting Municipal Birth Record & DOB...</span>`;
-    } else if (seconds === 8) {
-      statusEl.innerHTML = `<span style="color: var(--accent);"><span class="spinner spinner-primary" style="width:12px;height:12px;"></span> [2/4] Parsing Child Aadhaar Identity & Address...</span>`;
-    } else if (seconds === 15) {
-      statusEl.innerHTML = `<span style="color: var(--accent);"><span class="spinner spinner-primary" style="width:12px;height:12px;"></span> [3/4] Scrutinizing Parent Community Certificate & Caste Schedule...</span>`;
-    } else if (seconds === 22) {
-      statusEl.innerHTML = `<span style="color: var(--accent);"><span class="spinner spinner-primary" style="width:12px;height:12px;"></span> [4/4] Verifying Tamil Smart Family Card & Roster...</span>`;
+    if (seconds === 2) {
+      statusEl.innerHTML = `<span style="color: var(--accent);"><span class="spinner spinner-primary" style="width:12px;height:12px;"></span> [1/4] Extracting Municipal Birth Record & DOB (${birthCert.name})...</span>`;
+    } else if (seconds === 6) {
+      statusEl.innerHTML = `<span style="color: var(--accent);"><span class="spinner spinner-primary" style="width:12px;height:12px;"></span> [2/4] Parsing Child Aadhaar Identity & Address (${aadhaar.name})...</span>`;
+    } else if (seconds === 12) {
+      statusEl.innerHTML = `<span style="color: var(--accent);"><span class="spinner spinner-primary" style="width:12px;height:12px;"></span> [3/4] Scrutinizing Parent Community Certificate & Caste Schedule (${parentCert.name})...</span>`;
+    } else if (seconds === 18) {
+      statusEl.innerHTML = `<span style="color: var(--accent);"><span class="spinner spinner-primary" style="width:12px;height:12px;"></span> [4/4] Verifying Tamil Smart Family Card & Roster (${family.name})...</span>`;
     }
   }, 1000);
 
   try {
-    let data;
-    if (isSampleDocs) {
-      isSampleMode = true;
-      document.getElementById("is_sample").value = "true";
-      const res = await fetch("/api/verify/autofill-sample", { method: "POST" });
-      if (!res.ok) throw new Error("Sample extraction failed");
-      data = await res.json();
-    } else {
-      const formData = new FormData();
-      formData.append("parent_community_certificate", parentCert);
-      formData.append("birth_certificate", birthCert);
-      formData.append("aadhaar_card", aadhaar);
-      formData.append("family_card", family);
+    const formData = new FormData();
+    formData.append("parent_community_certificate", parentCert);
+    formData.append("birth_certificate", birthCert);
+    formData.append("aadhaar_card", aadhaar);
+    formData.append("family_card", family);
 
-      const res = await fetch("/api/verify/autofill", {
-        method: "POST",
-        body: formData
-      });
+    const res = await fetch("/api/verify/autofill", {
+      method: "POST",
+      body: formData
+    });
 
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.detail || "Failed to scan documents");
-      }
-
-      data = await res.json();
-      currentSessionId = data.session_id || "";
-      document.getElementById("session_id").value = currentSessionId;
-      document.getElementById("is_sample").value = "false";
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || "Failed to scan documents");
     }
+
+    const data = await res.json();
+    currentSessionId = data.session_id || "";
+    document.getElementById("session_id").value = currentSessionId;
+    document.getElementById("is_sample").value = "false";
 
     clearInterval(timer);
     populateFormFields(data);
@@ -402,10 +413,6 @@ async function handleFormSubmit(event) {
           <span><strong>Stage ${seg.num}/8:</strong> ${seg.title}</span>
         </div>
       `;
-      if (activeSegmentIndex > 0) {
-        const prev = PIPELINE_SEGMENT_STEPS[activeSegmentIndex - 1];
-        updateStageUI(prev.id, "VERIFIED", "Stage completed successfully.");
-      }
       updateStageUI(seg.id, "PROCESSING", seg.desc);
       activeSegmentIndex++;
     }

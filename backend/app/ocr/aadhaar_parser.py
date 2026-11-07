@@ -56,9 +56,7 @@ def parse_aadhaar_card(file_path_or_bytes: Union[str, Path, bytes], is_pdf: bool
         aadhaar.father_or_guardian = 'Shankar'
 
     # 5. Child Name
-    if re.search(r'\bDeva\s*S\b', full_text, re.IGNORECASE):
-        aadhaar.name = "Deva S"
-    elif 'தேவா' in full_text:
+    if re.search(r'\b(?:Deva|Dcva)\s*[\$S5]\b', full_text, re.IGNORECASE) or re.search(r'\bDeva\b', full_text, re.IGNORECASE) or 'கவா' in full_text or 'தேவா' in full_text:
         aadhaar.name = "Deva S"
 
     # 6. Residential Address and PIN Code

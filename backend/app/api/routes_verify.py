@@ -47,40 +47,28 @@ async def get_sample_info():
         "all_sample_docs_ready": all(sample_files.values())
     }
 
-SAMPLE_EXTRACTED_CACHE = {
-    "child_name": "Deva S",
-    "child_gender": "Male",
-    "child_dob": "21/02/2006",
-    "child_community": "MBC",
-    "child_sub_caste": "Hindu Vanniakula Kshatriya",
-    "father_name": "Shankar",
-    "father_community": "MBC",
-    "mother_name": "Sumathi",
-    "mother_community": "MBC",
-    "parent_certificate_submitted": "mother",
-    "door_no": "78",
-    "street": "2nd Street, Indra Gandhi Nagar",
-    "village_town": "Vyasarpadi",
-    "taluk": "Perambur",
-    "district": "Chennai",
-    "pincode": "600039",
-    "extracted_sources": {
-        "name_source": "Aadhaar Card (Deva S) & Birth Certificate (தேவா)",
-        "dob_source": "Municipal Birth Certificate (21/02/2006)",
-        "community_source": "Parent Community Certificate (No. 5351710, MBC)",
-        "parentage_source": "Aadhaar Care-of (S/O Shankar) & Family Smart Card",
-        "address_source": "Aadhaar & Family Smart Card (Vyasarpadi, 600039)"
-    },
-    "is_sample": True
-}
-
 @router.post("/autofill-sample")
 async def autofill_sample():
     """
-    Extracts all applicant particulars automatically from the official sample documents using OCR.
-    Returns verified high-accuracy particulars with zero latency.
+    Extracts all applicant particulars dynamically from the official sample documents using real OCR.
     """
-    return SAMPLE_EXTRACTED_CACHE
+    birth_path = settings.SAMPLE_DOCS_DIR / "child_birth.jpeg"
+    aadhaar_path = settings.SAMPLE_DOCS_DIR / "child_aadhar.pdf"
+    comm_path = settings.SAMPLE_DOCS_DIR / "mother_community.jpeg"
+    family_path = settings.SAMPLE_DOCS_DIR / "ration_card.pdf"
+
+    for p in [birth_path, aadhaar_path, comm_path, family_path]:
+        if not p.exists():
+            raise HTTPException(status_code=404, detail=f"Sample document not found: {p.name}")
+
+    data = extract_autofill_details(
+        birth_cert_path=birth_path,
+        aadhaar_path=aadhaar_path,
+        community_cert_path=comm_path,
+        family_card_path=family_path
+    )
+    data["is_sample"] = True
+    return data
 
 @router.post("/autofill")
 async def autofill_from_documents(

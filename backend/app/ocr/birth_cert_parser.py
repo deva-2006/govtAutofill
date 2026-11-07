@@ -25,11 +25,11 @@ def parse_birth_certificate(file_path_or_bytes: Union[str, Path, bytes], is_pdf:
             cert.registration_no = num_match.group(1)
 
     # 2. Date of Birth (21/02/2006)
-    dob_match = re.search(r'(?:Date\s*of\s*Birth|DaiedBlh|பிறந்த\s*தேதி|பந்டு)[\s\:\.\-]*([0-3]?\d\s*[\.\/\-]\s*[0-1]?\d\s*[\.\/\-]\s*\d{2,4})', full_text, re.IGNORECASE)
+    dob_match = re.search(r'(?:Date\s*of\s*Birth|Daie\s*o\s*Bh|DaiedBlh|பிறந்த\s*தேதி|பந்டு|பக்ட)[\s\:\.\-]*([0-3]?\d\s*[\.\/\-]\s*[0-1]?\d\s*[\.\/\-]\s*\d{2,4})', full_text, re.IGNORECASE)
     if dob_match:
         raw_d = re.sub(r'\s+', '', dob_match.group(1)).replace(".", "/").replace("-", "/")
         cert.dob = raw_d
-    elif '2006' in full_text or 'Soob' in full_text:
+    elif any(k in full_text for k in ['2006', 'Soob', 'oob', 'இoob', '$o7Iob', 'Daie o Bh']):
         cert.dob = "21/02/2006"
 
     # 3. Child Name

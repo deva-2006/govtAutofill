@@ -10,7 +10,8 @@ import easyocr.config
 
 # Multi-threading for fast CPU inference
 try:
-    torch.set_num_threads(4)
+    cpu_cores = os.cpu_count() or 4
+    torch.set_num_threads(min(8, max(4, cpu_cores - 2)))
 except Exception:
     pass
 
@@ -28,7 +29,6 @@ if 'tamil_g1' in easyocr.config.recognition_models.get('gen1', {}):
 class OCREngine:
     _instance = None
     _reader = None
-    _cache: dict[str, List[Tuple[str, float]]] = {}
 
     @classmethod
     def get_instance(cls):
@@ -61,49 +61,37 @@ class OCREngine:
             return enhanced
         return img
 
-    def _get_cache_key(self, file_path_or_bytes: Union[str, Path, bytes]) -> str:
-        if isinstance(file_path_or_bytes, (str, Path)):
-            p = Path(file_path_or_bytes).resolve()
-            if p.exists():
-                return f"{p}:{p.stat().st_mtime}"
-            return str(p)
-        return hashlib.md5(file_path_or_bytes).hexdigest()
-
     def extract_text_from_file(self, file_path_or_bytes: Union[str, Path, bytes], is_pdf: bool = False, max_pages: int = 2) -> List[Tuple[str, float]]:
         """
         Processes image or PDF file and returns list of (detected_text, confidence).
-        Caches results for high performance.
+        Runs genuine EasyOCR extraction dynamically without serving stale cached results.
         """
-        cache_key = self._get_cache_key(file_path_or_bytes)
-        if cache_key in self._cache:
-            return self._cache[cache_key]
-
         images = []
         is_pdf_file = is_pdf
         target_path = None
         if isinstance(file_path_or_bytes, (str, Path)):
             target_path = Path(file_path_or_bytes).resolve()
+            if not target_path.exists():
+                logger.error(f"File not found: {target_path}")
+                raise FileNotFoundError(f"Document file does not exist: {target_path}")
             if str(target_path).lower().endswith('.pdf'):
                 is_pdf_file = True
+        elif isinstance(file_path_or_bytes, (bytes, bytearray)) and bytes(file_path_or_bytes[:4]) == b'%PDF':
+            is_pdf_file = True
 
         if is_pdf_file:
             target_src = target_path if target_path else file_path_or_bytes
             embedded_text = extract_pdf_embedded_text(target_src)
             if embedded_text and len(embedded_text.strip()) > 50:
                 logger.info(f"Using high-fidelity digital text ({len(embedded_text)} chars) for PDF document.")
-                results = [(line.strip(), 1.0) for line in embedded_text.splitlines() if line.strip()]
-                self._cache[cache_key] = results
-                return results
+                return [(line.strip(), 1.0) for line in embedded_text.splitlines() if line.strip()]
             images = pdf_to_images(target_src, dpi=110, max_pages=max_pages)
         elif target_path:
             # Use np.fromfile to avoid Windows path / Unicode encoding issues
-            if target_path.exists():
-                data = np.fromfile(str(target_path), dtype=np.uint8)
-                img = cv2.imdecode(data, cv2.IMREAD_COLOR)
-                if img is not None:
-                    images.append(img)
-            else:
-                logger.warning(f"File not found: {target_path}")
+            data = np.fromfile(str(target_path), dtype=np.uint8)
+            img = cv2.imdecode(data, cv2.IMREAD_COLOR)
+            if img is not None:
+                images.append(img)
         else:
             nparr = np.frombuffer(file_path_or_bytes, np.uint8)
             img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
@@ -112,15 +100,14 @@ class OCREngine:
 
         results = []
         for idx, img in enumerate(images):
-            prep = self.preprocess_image(img, max_dim=1100)
-            raw_ocr = self._reader.readtext(prep, detail=1, batch_size=4)
+            prep = self.preprocess_image(img, max_dim=980)
+            raw_ocr = self._reader.readtext(prep, detail=1, batch_size=8)
             for item in raw_ocr:
                 text = item[1].strip()
                 conf = float(item[2])
                 if text:
                     results.append((text, conf))
 
-        self._cache[cache_key] = results
         return results
 
     def extract_full_text(self, file_path_or_bytes: Union[str, Path, bytes], is_pdf: bool = False) -> str:
