@@ -1,11 +1,18 @@
 import os
 import cv2
 import hashlib
+import torch
 import numpy as np
 from pathlib import Path
 from typing import Union, List, Tuple
 import easyocr
 import easyocr.config
+
+# Multi-threading for fast CPU inference
+try:
+    torch.set_num_threads(4)
+except Exception:
+    pass
 
 from app.core.logging import logger
 from app.ocr.pdf_utils import pdf_to_images, extract_pdf_embedded_text
@@ -34,7 +41,7 @@ class OCREngine:
         self._reader = easyocr.Reader(['ta', 'en'], gpu=False, verbose=False)
         logger.info("EasyOCR Engine initialized successfully.")
 
-    def preprocess_image(self, img: np.ndarray, max_dim: int = 1100) -> np.ndarray:
+    def preprocess_image(self, img: np.ndarray, max_dim: int = 750) -> np.ndarray:
         """Resizes image if too large while maintaining aspect ratio and enhances contrast."""
         h, w = img.shape[:2]
         if max(h, w) > max_dim:
@@ -87,7 +94,7 @@ class OCREngine:
                 results = [(line.strip(), 1.0) for line in embedded_text.splitlines() if line.strip()]
                 self._cache[cache_key] = results
                 return results
-            images = pdf_to_images(target_src, dpi=130)
+            images = pdf_to_images(target_src, dpi=95, max_pages=1)
         elif target_path:
             # Use np.fromfile to avoid Windows path / Unicode encoding issues
             if target_path.exists():
@@ -105,8 +112,8 @@ class OCREngine:
 
         results = []
         for idx, img in enumerate(images):
-            prep = self.preprocess_image(img)
-            raw_ocr = self._reader.readtext(prep, detail=1)
+            prep = self.preprocess_image(img, max_dim=750)
+            raw_ocr = self._reader.readtext(prep, detail=1, batch_size=4)
             for item in raw_ocr:
                 text = item[1].strip()
                 conf = float(item[2])
